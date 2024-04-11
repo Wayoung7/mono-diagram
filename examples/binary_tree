@@ -1,0 +1,14 @@
+[binary_tree]
+a=>b,c
+b=>,f
+c=>k,m
+k=>e,e
+
+a:2
+b:0.42
+c:9.5
+f:-3
+k:abc
+m:2
+d:001
+a:7

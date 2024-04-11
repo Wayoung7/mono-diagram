@@ -1,0 +1,9 @@
+binary_tree = { "binary_tree" }
+table = { "table" }
+grid = { "grid" }
+
+title = { "[" ~ (binary_tree | table | grid) ~ "]" }
+content = { (!(title) ~ ANY)+ }
+
+diagram = { title ~ content }
+main = { SOI ~ (diagram+) ~ EOI }
