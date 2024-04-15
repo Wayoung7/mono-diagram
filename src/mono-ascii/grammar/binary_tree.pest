@@ -1,6 +1,6 @@
 WHITESPACE = _{ " " | "\r" | "\n" | "\t" }
 
-node_value = @{ ( ASCII_ALPHANUMERIC | "." | "_" | "-" )+ }
+node_value = @{ (  ASCII_ALPHANUMERIC | "." | "_" | "-" )+ }
 node_variable_name = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
 
 lchild = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }

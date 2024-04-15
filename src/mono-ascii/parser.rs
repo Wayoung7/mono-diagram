@@ -36,6 +36,10 @@ pub fn parse(script_path: &str) -> Result<Vec<Box<dyn Diagram>>> {
     Ok(parsed_diagrams)
 }
 
+pub fn print(diagrams: &Vec<Box<dyn Diagram>>) {
+    diagrams.iter().for_each(|d| d.print());
+}
+
 fn init_diagram(title: &str) -> Box<dyn Diagram> {
     match title {
         "binary_tree" => Box::new(BinaryTreeDiagram::default()),

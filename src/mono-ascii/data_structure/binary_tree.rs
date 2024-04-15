@@ -1,12 +1,21 @@
-use std::fmt::{Debug, Display};
+use std::{
+    cmp::max,
+    fmt::{Debug, Display},
+};
 
-pub struct TreeNode<T: Display + Default> {
-    value: T,
-    lnode: Option<Box<TreeNode<T>>>,
-    rnode: Option<Box<TreeNode<T>>>,
+pub struct TreeNode<T>
+where
+    T: Display + Default + Debug,
+{
+    pub value: T,
+    pub lnode: Option<Box<TreeNode<T>>>,
+    pub rnode: Option<Box<TreeNode<T>>>,
 }
 
-impl<T: Display + Default> TreeNode<T> {
+impl<T> TreeNode<T>
+where
+    T: Display + Default + Debug,
+{
     pub fn new(value: T, lnode: Option<Box<TreeNode<T>>>, rnode: Option<Box<TreeNode<T>>>) -> Self {
         Self {
             value,
@@ -23,6 +32,21 @@ impl<T: Display + Default> TreeNode<T> {
         }
     }
 
+    pub fn degree(&self) -> usize {
+        max(
+            if let Some(l) = &self.lnode {
+                l.degree() + 1
+            } else {
+                1
+            },
+            if let Some(r) = &self.rnode {
+                r.degree() + 1
+            } else {
+                1
+            },
+        )
+    }
+
     pub fn map<F>(&mut self, f: &F)
     where
         F: Fn(&mut T),
@@ -37,7 +61,10 @@ impl<T: Display + Default> TreeNode<T> {
     }
 }
 
-impl<T: Display + Default> Display for TreeNode<T> {
+impl<T> Display for TreeNode<T>
+where
+    T: Display + Default + Debug,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[")?;
         write!(f, "Root: {}", self.value)?;
@@ -52,12 +79,25 @@ impl<T: Display + Default> Display for TreeNode<T> {
     }
 }
 
-impl<T: Display + Default> Default for TreeNode<T> {
+impl<T> Default for TreeNode<T>
+where
+    T: Display + Default + Debug,
+{
     fn default() -> Self {
         Self {
             value: T::default(),
             lnode: None,
             rnode: None,
         }
+    }
+}
+
+impl<T> Debug for TreeNode<T>
+where
+    T: Display + Default + Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} ", self.value)?;
+        Ok(())
     }
 }

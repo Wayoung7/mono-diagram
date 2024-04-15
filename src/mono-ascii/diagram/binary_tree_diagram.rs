@@ -9,7 +9,7 @@ use pest::{
 };
 use pest_derive::Parser;
 
-use crate::data_structure::binary_tree::TreeNode;
+use crate::{data_structure::binary_tree::TreeNode, utils::pad_string_center};
 
 use super::Diagram;
 
@@ -70,7 +70,77 @@ impl Diagram for BinaryTreeDiagram {
         *self = BinaryTreeDiagram { data: tree };
     }
 
-    fn print(&self) {}
+    fn print(&self) {
+        let degree = self.data.degree();
+        let mut t = 0;
+        let mut spacing: Vec<usize> = Vec::new();
+        for _ in 0..(degree + 2) {
+            spacing.push(t);
+            t = t * 2 + 1;
+        }
+        let mut next = vec![Some(&self.data)];
+        for i in (0..degree).rev() {
+            let width = spacing[i + 2];
+            if i != degree - 1 {
+                // Print arrow
+                assert!(next.len() % 2 == 0);
+                for (idx, pair) in next.chunks(2).enumerate() {
+                    (0..=spacing[i + 1]).for_each(|_| print!(" "));
+                    if pair[0].is_some() {
+                        (0..spacing[i]).for_each(|_| print!("_"));
+                        print!("/");
+                    } else {
+                        (0..=spacing[i]).for_each(|_| print!(" "));
+                    }
+                    (0..spacing[i + 1]).for_each(|_| print!(" "));
+                    if pair[1].is_some() {
+                        print!("\\");
+                        (0..spacing[i]).for_each(|_| print!("_"));
+                    } else {
+                        (0..=spacing[i]).for_each(|_| print!(" "));
+                    }
+                    (0..=spacing[i + 1]).for_each(|_| print!(" "));
+                    print!(" ");
+                }
+                print!("\n");
+            }
+
+            // Print data
+            next.iter().for_each(|n| {
+                if let Some(n) = n {
+                    let l_pad = if n.lnode.is_none() { ' ' } else { '_' };
+                    let r_pad = if n.rnode.is_none() { ' ' } else { '_' };
+                    print!(
+                        "{:^width$} ",
+                        pad_string_center(&n.value, spacing[i], l_pad, r_pad)
+                    );
+                } else {
+                    print!("{:^width$} ", "");
+                }
+            });
+            print!("\n");
+
+            let mut childs: Vec<Option<&Box<TreeNode<String>>>> = Vec::new();
+            for node in next.iter() {
+                if node.is_none() {
+                    childs.push(None);
+                    childs.push(None);
+                } else {
+                    if let Some(l) = &node.unwrap().lnode {
+                        childs.push(Some(l));
+                    } else {
+                        childs.push(None);
+                    }
+                    if let Some(r) = &node.unwrap().rnode {
+                        childs.push(Some(r));
+                    } else {
+                        childs.push(None);
+                    }
+                }
+            }
+            next = childs;
+        }
+    }
 }
 
 fn parse_childs(pairs: Pairs<Rule>) -> (Option<&str>, Option<&str>) {
