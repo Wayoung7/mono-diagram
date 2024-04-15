@@ -50,5 +50,5 @@ fn init_diagram(title: &str) -> Box<dyn Diagram> {
 }
 
 #[derive(Parser)]
-#[grammar = "mono-ascii/grammar/script.pest"]
+#[grammar = "mono-diagram/grammar/script.pest"]
 pub struct ScriptParser;

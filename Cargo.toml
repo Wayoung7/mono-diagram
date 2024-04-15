@@ -1,5 +1,5 @@
 [package]
-name = "mono-ascii"
+name = "mono-diagram"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,5 +11,5 @@ pest_derive = "2.7.9"
 
 
 [[bin]]
-name = "mono-ascii"
-path = "src/mono-ascii/main.rs"
+name = "mono-diagram"
+path = "src/mono-diagram/main.rs"

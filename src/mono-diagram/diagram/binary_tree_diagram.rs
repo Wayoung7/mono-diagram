@@ -204,5 +204,5 @@ fn construct_tree_helper<'a>(
 }
 
 #[derive(Parser)]
-#[grammar = "mono-ascii/grammar/binary_tree.pest"]
+#[grammar = "mono-diagram/grammar/binary_tree.pest"]
 struct BinaryTreeParser;
