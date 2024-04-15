@@ -6,7 +6,7 @@ mod utils;
 use parser::{parse, print};
 
 fn main() {
-    let res = parse("examples/binary_tree").unwrap();
+    let res = parse("examples/table").unwrap();
     print(&res);
-    // println!("{}", "🉑i".chars().);
+    // println!("|{:^8}|", "🉑我们iii".to_string());
 }

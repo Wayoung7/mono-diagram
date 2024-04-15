@@ -1,0 +1,7 @@
+WHITESPACE = _{ NEWLINE | " " }
+
+CJK = { HAN | HIRAGANA | KATAKANA | HANGUL | BOPOMOFO }
+
+cell = @{ (CJK | PUNCTUATION | ASCII_ALPHANUMERIC | " ")+ }
+line = ${ cell ~ ("|" ~ cell)* }
+diagram = { SOI ~ line+ ~ EOI }

@@ -7,7 +7,7 @@ use pest::Parser;
 use pest_derive::Parser;
 
 use crate::diagram::{
-    binary_tree_diagram::BinaryTreeDiagram, grid::GridDiagram, table::TableDiagram, Diagram,
+    binary_tree_diagram::BinaryTreeDiagram, grid::GridDiagram, table_diagram::TableDiagram, Diagram,
 };
 
 pub fn parse(script_path: &str) -> Result<Vec<Box<dyn Diagram>>> {
