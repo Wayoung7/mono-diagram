@@ -47,18 +47,18 @@ where
         )
     }
 
-    pub fn map<F>(&mut self, f: &F)
-    where
-        F: Fn(&mut T),
-    {
-        f(&mut self.value);
-        if let Some(ref mut left) = self.lnode {
-            left.map(f);
-        }
-        if let Some(ref mut right) = self.rnode {
-            right.map(f);
-        }
-    }
+    // pub fn map<F>(&mut self, f: &F)
+    // where
+    //     F: Fn(&mut T),
+    // {
+    //     f(&mut self.value);
+    //     if let Some(ref mut left) = self.lnode {
+    //         left.map(f);
+    //     }
+    //     if let Some(ref mut right) = self.rnode {
+    //         right.map(f);
+    //     }
+    // }
 }
 
 impl<T> Display for TreeNode<T>

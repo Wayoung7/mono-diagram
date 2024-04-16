@@ -1,17 +1,18 @@
 use std::fmt::{Debug, Display};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Table<T>
 where
     T: Display + Default + Debug,
 {
-    cells: Vec<Vec<TableCell<T>>>,
+    pub cells: Vec<Vec<TableCell<T>>>,
+    pub width: usize,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct TableCell<T>
 where
     T: Display + Default + Debug,
 {
-    value: T,
+    pub value: T,
 }

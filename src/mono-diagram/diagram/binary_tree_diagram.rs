@@ -3,10 +3,7 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
-use pest::{
-    iterators::{Pair, Pairs},
-    Parser,
-};
+use pest::{iterators::Pairs, Parser};
 use pest_derive::Parser;
 
 use crate::{data_structure::binary_tree::TreeNode, utils::pad_string_center};
@@ -67,7 +64,7 @@ impl Diagram for BinaryTreeDiagram {
 
         let tree = construct_tree(root, &relationship_map, &assign_map);
         // println!("{}", tree);
-        *self = BinaryTreeDiagram { data: tree };
+        self.data = tree;
     }
 
     fn print(&self) {
@@ -84,7 +81,7 @@ impl Diagram for BinaryTreeDiagram {
             if i != degree - 1 {
                 // Print arrow
                 assert!(next.len() % 2 == 0);
-                for (idx, pair) in next.chunks(2).enumerate() {
+                for (_idx, pair) in next.chunks(2).enumerate() {
                     (0..=spacing[i + 1]).for_each(|_| print!(" "));
                     if pair[0].is_some() {
                         (0..spacing[i]).for_each(|_| print!("_"));
