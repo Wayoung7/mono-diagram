@@ -7,6 +7,7 @@ where
 {
     pub cells: Vec<Vec<TableCell<T>>>,
     pub width: usize,
+    pub height: usize,
 }
 
 #[derive(Default, Debug)]

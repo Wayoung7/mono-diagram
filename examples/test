@@ -1,16 +1,24 @@
 [binary_tree]
-this is the content
-of
-  a binary 
-    tree   
+a=>b,c
+b=>,f
+c=>k,m
+k=>e,
+e=>n,
 
-[table]
+a:2
+b:0.42
+c:9.5
+f:-3
+k:abc
+m:2
+d:001
+a:7
+n:7
 
+[table] 
+基类成员|Public继承|Protected继承|Private继承
+Public|Public|Protected|Private
+Protected|Protected|Protected|Private
+Private|Hidden|Hidden|Hidden
 
- And this 0is the content of a table;
-[grid]
-  grid grid grid grid
-  ,
-  ,
-. grid    -g
 

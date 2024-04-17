@@ -1,0 +1,10 @@
+WHITESPACE = _{ " " | NEWLINE }
+
+int = @{ ASCII_DIGIT+ }
+cell = @{ ASCII_ALPHANUMERIC+ } 
+
+size = { "{" ~ int ~ "," ~ int ~ "}" }
+pos = { int ~ "," ~ int }
+assign = { pos ~ ":" ~ cell }
+
+diagram = { SOI ~ size ~ assign* }

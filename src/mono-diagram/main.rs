@@ -6,7 +6,6 @@ mod utils;
 use parser::{parse, print};
 
 fn main() {
-    let res = parse("examples/table").unwrap();
+    let res = parse("examples/grid").unwrap();
     print(&res);
-    // println!("|{:^8}|", "🉑我们iii".to_string());
 }

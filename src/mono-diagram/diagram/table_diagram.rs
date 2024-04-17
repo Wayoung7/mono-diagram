@@ -26,7 +26,7 @@ impl Diagram for TableDiagram {
             .next()
             .unwrap();
         let mut width: usize = 0;
-        for (_idx, line) in diagram.into_inner().enumerate() {
+        for (idx, line) in diagram.into_inner().enumerate() {
             let mut row: Vec<TableCell<String>> = Vec::new();
             match line.as_rule() {
                 Rule::line => {
@@ -35,6 +35,7 @@ impl Diagram for TableDiagram {
                             value: cell.as_str().to_owned(),
                         });
                     }
+                    table_data.height = idx + 1;
                 }
                 Rule::EOI => break,
                 _ => (),
