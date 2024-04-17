@@ -1,5 +1,5 @@
 [table] 
-基类成员|Public继承|Protected继承|Private继承
+Base Class Member|Public Inheritance|Protected Inheritance|Private Inheritance
 Public|Public|Protected|Private
 Protected|Protected|Protected|Private
 Private|Hidden|Hidden|Hidden

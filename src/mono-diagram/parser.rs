@@ -1,8 +1,6 @@
-use std::{
-    fs,
-    io::{Read, Result},
-};
+use std::{fs, io::Read};
 
+use anyhow::{Error, Result};
 use pest::Parser;
 use pest_derive::Parser;
 
@@ -17,7 +15,7 @@ pub fn parse(script_path: &str) -> Result<Vec<Box<dyn Diagram>>> {
     let mut file = fs::File::open(script_path).unwrap();
     file.read_to_string(&mut file_content)?;
     let main = ScriptParser::parse(Rule::main, &file_content)
-        .unwrap()
+        .map_err(|e| Error::msg(format!("parsing error: {}", e.line())))?
         .next()
         .unwrap();
     for diagram in main.into_inner() {
@@ -27,7 +25,7 @@ pub fn parse(script_path: &str) -> Result<Vec<Box<dyn Diagram>>> {
                 let title = diagram_inner.next().unwrap().into_inner().as_str();
                 let content = diagram_inner.next().unwrap().as_str();
                 let mut diagram = init_diagram(title);
-                diagram.parse_from_str(content);
+                diagram.parse_from_str(content)?;
                 parsed_diagrams.push(diagram);
             }
 

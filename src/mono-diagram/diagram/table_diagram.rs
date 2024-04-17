@@ -1,5 +1,6 @@
 use std::iter::repeat;
 
+use anyhow::{Error, Result};
 use pest::Parser;
 use pest_derive::Parser;
 use unicode_width::UnicodeWidthStr;
@@ -19,10 +20,15 @@ pub struct TableDiagram {
 }
 
 impl Diagram for TableDiagram {
-    fn parse_from_str(&mut self, input: &str) {
+    fn parse_from_str(&mut self, input: &str) -> Result<()> {
         let mut table_data = Table::<String>::default();
         let diagram = TableDiagramParser::parse(Rule::diagram, input)
-            .unwrap()
+            .map_err(|e| {
+                Error::msg(format!(
+                    "parsing error: incorrect table grammar, context: {}",
+                    e.line()
+                ))
+            })?
             .next()
             .unwrap();
         let mut width: usize = 0;
@@ -48,6 +54,8 @@ impl Diagram for TableDiagram {
 
         table_data.width = width;
         self.data = table_data;
+
+        Ok(())
     }
 
     fn print(&self) {

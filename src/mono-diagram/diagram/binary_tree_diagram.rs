@@ -3,6 +3,7 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
+use anyhow::{Error, Result};
 use pest::{iterators::Pairs, Parser};
 use pest_derive::Parser;
 
@@ -23,12 +24,17 @@ impl Default for BinaryTreeDiagram {
 }
 
 impl Diagram for BinaryTreeDiagram {
-    fn parse_from_str(&mut self, input: &str) {
+    fn parse_from_str(&mut self, input: &str) -> Result<()> {
         let mut root: &str = "";
         let mut relationship_map: HashMap<&str, (Option<&str>, Option<&str>)> = HashMap::new();
         let mut assign_map: HashMap<&str, &str> = HashMap::new();
         let diagram = BinaryTreeParser::parse(Rule::diagram, input)
-            .unwrap()
+            .map_err(|e| {
+                Error::msg(format!(
+                    "parsing error: incorrect binary_tree grammar, context: {}",
+                    e.line()
+                ))
+            })?
             .next()
             .unwrap();
         for line in diagram.into_inner() {
@@ -63,8 +69,9 @@ impl Diagram for BinaryTreeDiagram {
         }
 
         let tree = construct_tree(root, &relationship_map, &assign_map);
-        // println!("{}", tree);
         self.data = tree;
+
+        Ok(())
     }
 
     fn print(&self) {

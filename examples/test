@@ -1,9 +1,9 @@
 [binary_tree]
-a=>b,c
-b=>,f
-c=>k,m
-k=>e,
-e=>n,
+a->b,c
+b->,f
+c->k,m
+k->e,
+e->n,
 
 a:2
 b:0.42
@@ -16,9 +16,10 @@ a:7
 n:7
 
 [table] 
-基类成员|Public继承|Protected继承|Private继承
+Base Class Member|Public Inheritance|Protected Inheritance|Private Inheritance
 Public|Public|Protected|Private
 Protected|Protected|Protected|Private
 Private|Hidden|Hidden|Hidden
+
 
 

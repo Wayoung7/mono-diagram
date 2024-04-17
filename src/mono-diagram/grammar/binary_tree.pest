@@ -6,7 +6,7 @@ node_variable_name = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
 lchild = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
 rchild = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
 childs = ${lchild? ~ " "* ~ "," ~ " "* ~ rchild?}
-relationship = ${ node_variable_name ~ " "* ~ "=>" ~ " "* ~ childs }
+relationship = ${ node_variable_name ~ " "* ~ "->" ~ " "* ~ childs }
 
 assign = ${ node_variable_name ~ " "* ~ ":" ~ " "* ~ node_value }
 

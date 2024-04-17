@@ -1,9 +1,9 @@
 [binary_tree]
-a=>b,c
-b=>,f
-c=>k,m
-k=>e,
-e=>n,
+a->b,c
+b->,f
+c->k,m
+k->e,
+e->n,
 
 a:2
 b:0.42

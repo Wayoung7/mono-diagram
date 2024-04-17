@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.82"
 pest = "2.7.9"
 pest_derive = "2.7.9"
+thiserror = "1.0.58"
 unicode-width = "0.1.11"
 
 
