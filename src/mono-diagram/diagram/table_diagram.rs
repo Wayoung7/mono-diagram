@@ -1,9 +1,8 @@
-use std::iter::repeat;
+use std::{io::Write as _, iter::repeat};
 
 use anyhow::{Error, Result};
 use pest::Parser;
 use pest_derive::Parser;
-use unicode_width::UnicodeWidthStr;
 
 use crate::{
     data_structure::table::{Table, TableCell},
@@ -58,11 +57,12 @@ impl Diagram for TableDiagram {
         Ok(())
     }
 
-    fn print(&self) {
+    fn write(&self) -> Result<Vec<u8>> {
+        let mut buffer = Vec::new();
         let mut col_width: Vec<usize> = repeat(0).take(self.data.width).collect();
         for row in self.data.cells.iter() {
             for (idx, col) in row.iter().enumerate() {
-                let cur_width = UnicodeWidthStr::width(col.value.as_str());
+                let cur_width = col.value.as_str().len();
                 if cur_width > col_width[idx] {
                     col_width[idx] = cur_width;
                 }
@@ -76,7 +76,6 @@ impl Diagram for TableDiagram {
                 PALETTE[0]
             )
         });
-        println!("{}", separating_line);
         for row in self.data.cells.iter() {
             let text_line: String =
                 col_width
@@ -95,9 +94,11 @@ impl Diagram for TableDiagram {
                             PALETTE[2]
                         )
                     });
-            println!("{}", text_line);
-            println!("{}", separating_line);
+            writeln!(&mut buffer, "{}", separating_line)?;
+            writeln!(&mut buffer, "{}", text_line)?;
         }
+        writeln!(&mut buffer, "{}", separating_line)?;
+        Ok(buffer)
     }
 }
 

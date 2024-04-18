@@ -6,5 +6,5 @@ pub mod table_diagram;
 
 pub trait Diagram {
     fn parse_from_str(&mut self, input: &str) -> Result<()>;
-    fn print(&self);
+    fn write(&self) -> Result<Vec<u8>>;
 }

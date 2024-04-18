@@ -24,3 +24,11 @@ pub fn pad_string_right(s: &str, width: usize, r_pad: char) -> String {
         format!("{}{}", s, repeat(r_pad).take(pad_len).collect::<String>())
     }
 }
+
+pub fn add_prefix(input: String, prefix: &str) -> String {
+    input
+        .lines() // Split the input string into lines
+        .map(|line| format!("{}{}", prefix, line)) // Add prefix to each line
+        .collect::<Vec<String>>()
+        .join("\n") // Join the lines back together with newline characters
+}

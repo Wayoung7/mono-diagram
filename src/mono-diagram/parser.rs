@@ -35,8 +35,12 @@ pub fn parse(script_path: &str) -> Result<Vec<Box<dyn Diagram>>> {
     Ok(parsed_diagrams)
 }
 
-pub fn print(diagrams: &Vec<Box<dyn Diagram>>) {
-    diagrams.iter().for_each(|d| d.print());
+pub fn write(diagrams: &Vec<Box<dyn Diagram>>) -> Result<Vec<u8>> {
+    let mut buffer = Vec::new();
+    for d in diagrams {
+        buffer.append(&mut d.write().unwrap());
+    }
+    Ok(buffer)
 }
 
 fn init_diagram(title: &str) -> Box<dyn Diagram> {

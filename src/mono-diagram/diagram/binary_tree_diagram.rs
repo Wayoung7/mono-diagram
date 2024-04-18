@@ -1,6 +1,7 @@
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
+    io::Write as _,
 };
 
 use anyhow::{Error, Result};
@@ -74,7 +75,8 @@ impl Diagram for BinaryTreeDiagram {
         Ok(())
     }
 
-    fn print(&self) {
+    fn write(&self) -> Result<Vec<u8>> {
+        let mut buffer = Vec::new();
         let degree = self.data.degree();
         let mut t = 0;
         let mut spacing: Vec<usize> = Vec::new();
@@ -89,40 +91,41 @@ impl Diagram for BinaryTreeDiagram {
                 // Print arrow
                 assert!(next.len() % 2 == 0);
                 for (_idx, pair) in next.chunks(2).enumerate() {
-                    (0..=spacing[i + 1]).for_each(|_| print!(" "));
+                    (0..=spacing[i + 1]).try_for_each(|_| write!(&mut buffer, " "))?;
                     if pair[0].is_some() {
-                        (0..spacing[i]).for_each(|_| print!("_"));
-                        print!("/");
+                        (0..spacing[i]).try_for_each(|_| write!(&mut buffer, "_"))?;
+                        write!(&mut buffer, "/")?;
                     } else {
-                        (0..=spacing[i]).for_each(|_| print!(" "));
+                        (0..=spacing[i]).try_for_each(|_| write!(&mut buffer, " "))?;
                     }
-                    (0..spacing[i + 1]).for_each(|_| print!(" "));
+                    (0..spacing[i + 1]).try_for_each(|_| write!(&mut buffer, " "))?;
                     if pair[1].is_some() {
-                        print!("\\");
-                        (0..spacing[i]).for_each(|_| print!("_"));
+                        write!(&mut buffer, "\\")?;
+                        (0..spacing[i]).try_for_each(|_| write!(&mut buffer, "_"))?;
                     } else {
-                        (0..=spacing[i]).for_each(|_| print!(" "));
+                        (0..=spacing[i]).try_for_each(|_| write!(&mut buffer, " "))?;
                     }
-                    (0..=spacing[i + 1]).for_each(|_| print!(" "));
-                    print!(" ");
+                    (0..=spacing[i + 1]).try_for_each(|_| write!(&mut buffer, " "))?;
+                    write!(&mut buffer, " ")?;
                 }
-                print!("\n");
+                write!(&mut buffer, "\n")?;
             }
 
             // Print data
-            next.iter().for_each(|n| {
+            next.iter().try_for_each(|n| {
                 if let Some(n) = n {
                     let l_pad = if n.lnode.is_none() { ' ' } else { '_' };
                     let r_pad = if n.rnode.is_none() { ' ' } else { '_' };
-                    print!(
+                    write!(
+                        &mut buffer,
                         "{:^width$} ",
                         pad_string_center(&n.value, spacing[i], l_pad, r_pad)
-                    );
+                    )
                 } else {
-                    print!("{:^width$} ", "");
+                    write!(&mut buffer, "{:^width$} ", "")
                 }
-            });
-            print!("\n");
+            })?;
+            write!(&mut buffer, "\n")?;
 
             let mut childs: Vec<Option<&Box<TreeNode<String>>>> = Vec::new();
             for node in next.iter() {
@@ -144,6 +147,7 @@ impl Diagram for BinaryTreeDiagram {
             }
             next = childs;
         }
+        Ok(buffer)
     }
 }
 

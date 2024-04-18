@@ -1,17 +1,22 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Write as _, iter::repeat};
 
 use anyhow::{Error, Result};
 use pest::Parser;
 use pest_derive::Parser;
 
-use crate::data_structure::table::{Table, TableCell};
+use crate::{
+    data_structure::table::{Table, TableCell},
+    utils::pad_string_center,
+};
 
 use super::Diagram;
+
+const PALETTE: [char; 3] = ['+', '-', '|'];
+const MAX_CELL_WIDTH: usize = 3;
 
 #[derive(Default)]
 pub struct GridDiagram {
     pub data: Table<String>,
-    pub cell_width: usize,
 }
 
 impl Diagram for GridDiagram {
@@ -27,7 +32,6 @@ impl Diagram for GridDiagram {
             .unwrap();
         let mut grid_data: Table<String> = Table::default();
         let mut assign_map: HashMap<(usize, usize), &str> = HashMap::new();
-        let mut max_cell_width = 0;
         for ele in diagram.into_inner() {
             match ele.as_rule() {
                 Rule::size => {
@@ -42,18 +46,15 @@ impl Diagram for GridDiagram {
                     let x = pos_inner.next().unwrap().as_str().parse().unwrap();
                     let y = pos_inner.next().unwrap().as_str().parse().unwrap();
                     let cell = assign_inner.next().unwrap().as_str();
-                    if cell.len() > 3 {
+                    if cell.len() > MAX_CELL_WIDTH {
                         return Err(Error::msg(format!(
-                            "diagram error: length of text in a grid cell should be less than 3, context: {x},{y}:{cell}"
+                            "diagram error: length of text in a grid cell should be less than {MAX_CELL_WIDTH}, context: {x},{y}:{cell}"
                         )));
                     }
                     if assign_map.contains_key(&(x, y)) {
                         return Err(Error::msg(format!(
                             "diagram error: assign a cell for multiple times, context: {x},{y}:{cell}"
                         )));
-                    }
-                    if cell.len() > max_cell_width {
-                        max_cell_width = cell.len();
                     }
                     assign_map.insert((x, y), cell);
                 }
@@ -75,13 +76,36 @@ impl Diagram for GridDiagram {
             }
             grid_data.cells.push(row);
         }
-        self.cell_width = max_cell_width;
         self.data = grid_data;
 
         Ok(())
     }
 
-    fn print(&self) {}
+    fn write(&self) -> Result<Vec<u8>> {
+        let mut buffer = Vec::new();
+        let separating_line = (0..self.data.width).fold(PALETTE[0].to_string(), |acc, _| {
+            format!(
+                "{}{}{}",
+                acc,
+                repeat(PALETTE[1]).take(MAX_CELL_WIDTH).collect::<String>(),
+                PALETTE[0]
+            )
+        });
+        for row in self.data.cells.iter() {
+            let text_line: String = (0..self.data.width).fold(PALETTE[2].to_string(), |acc, i| {
+                format!(
+                    "{}{}{}",
+                    acc,
+                    pad_string_center(&row[i].value, MAX_CELL_WIDTH, ' ', ' '),
+                    PALETTE[2]
+                )
+            });
+            writeln!(&mut buffer, "{}", separating_line)?;
+            writeln!(&mut buffer, "{}", text_line)?;
+        }
+        writeln!(&mut buffer, "{}", separating_line)?;
+        Ok(buffer)
+    }
 }
 
 #[derive(Parser)]
