@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.82"
 clap = "4.5.4"
 clap_derive = "4.5.4"
+crossterm = "0.27.0"
 pest = "2.7.9"
 pest_derive = "2.7.9"
 

@@ -3,11 +3,16 @@ mod data_structure;
 mod diagram;
 mod parser;
 mod utils;
+mod watch;
+
+use std::io::stdout;
 
 use args::{Cli, Commands};
 use clap::Parser;
+use crossterm::{cursor, execute, terminal};
 use parser::{parse, write};
 use utils::add_prefix;
+use watch::watch;
 
 fn main() {
     let cli = Cli::parse();
@@ -15,14 +20,10 @@ fn main() {
     match &cli.command {
         Commands::Build { file } => build_cmd(file),
         Commands::Print { file } => print_cmd(file, prefix),
+        Commands::Watch { file } => watch_cmd(file, prefix),
         _ => (),
     }
-    // let res = parse("examples/grid");
-    // match res {
-    //     Ok(r) => print(&r),
-    //     Err(e) => println!("{}", e),
-    // }
-    // print(&res);
+    // watch_cmd("examples/binary_tree", None);
 }
 
 fn build_cmd(file: &str) {
@@ -44,5 +45,16 @@ fn print_cmd(file: &str, prefix: Option<String>) {
             )
         ),
         Err(e) => println!("{}", e),
+    }
+}
+
+fn watch_cmd(file: &str, prefix: Option<String>) {
+    match watch(file, prefix) {
+        Err(e) => {
+            execute!(&mut stdout(), cursor::Show, terminal::LeaveAlternateScreen).unwrap();
+            terminal::disable_raw_mode().unwrap();
+            println!("{}", e);
+        }
+        _ => (),
     }
 }
