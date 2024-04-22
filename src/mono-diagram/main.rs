@@ -15,21 +15,21 @@ use utils::add_prefix;
 use watch::watch;
 
 fn main() {
-    let cli = Cli::parse();
-    let prefix = cli.prefix;
-    match &cli.command {
-        Commands::Build { file } => build_cmd(file),
-        Commands::Print { file } => print_cmd(file, prefix),
-        Commands::Watch { file } => watch_cmd(file, prefix),
-        _ => (),
-    }
-    // watch_cmd("examples/binary_tree", None);
+    // let cli = Cli::parse();
+    // let prefix = cli.prefix;
+    // match &cli.command {
+    //     Commands::Build { file } => build_cmd(file),
+    //     Commands::Print { file } => print_cmd(file, prefix),
+    //     Commands::Watch { file } => watch_cmd(file, prefix),
+    //     _ => (),
+    // }
+    build_cmd("examples/dag");
 }
 
 fn build_cmd(file: &str) {
     let res = parse(file);
     match res {
-        Ok(_) => println!("Build success"),
+        Ok(_) => println!("Building succeed"),
         Err(e) => println!("{}", e),
     }
 }

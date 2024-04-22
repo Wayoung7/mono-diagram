@@ -1,0 +1,10 @@
+WHITESPACE = _{ " " | NEWLINE }
+
+node_value = @{ (  ASCII_ALPHANUMERIC | "." | "_" | "-" )+ }
+node_variable_name = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+
+relationship = ${ node_variable_name ~ " "* ~ "->" ~ " "* ~ node_variable_name ~ (" "* ~ "->" ~ " "* ~ node_variable_name)* }
+
+assign = ${ node_variable_name ~ " "* ~ ":" ~ " "* ~ node_value }
+
+diagram = { SOI ~ (assign | relationship)+ ~ EOI }

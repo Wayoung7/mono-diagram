@@ -8,8 +8,8 @@ use pest::Parser;
 use pest_derive::Parser;
 
 use crate::diagram::{
-    binary_tree_diagram::BinaryTreeDiagram, grid_diagram::GridDiagram, table_diagram::TableDiagram,
-    Diagram,
+    binary_tree_diagram::BinaryTreeDiagram, dag_diagram::DagGraph, grid_diagram::GridDiagram,
+    table_diagram::TableDiagram, Diagram,
 };
 
 pub fn parse(script_path: &str) -> Result<Vec<Box<dyn Diagram>>> {
@@ -53,6 +53,7 @@ fn init_diagram(title: &str) -> Box<dyn Diagram> {
         "binary_tree" => Box::new(BinaryTreeDiagram::default()),
         "table" => Box::new(TableDiagram::default()),
         "grid" => Box::new(GridDiagram::default()),
+        "dag" => Box::new(DagGraph::default()),
         _ => panic!(""),
     }
 }

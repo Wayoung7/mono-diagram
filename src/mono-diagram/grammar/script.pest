@@ -1,8 +1,9 @@
 binary_tree = { "binary_tree" }
 table = { "table" }
 grid = { "grid" }
+dag = { "dag" }
 
-title = { "[" ~ (binary_tree | table | grid) ~ "]" }
+title = { "[" ~ (binary_tree | table | grid | dag) ~ "]" }
 content = { (!(title) ~ ANY)+ }
 
 diagram = { title ~ content }
