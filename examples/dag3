@@ -1,0 +1,10 @@
+[dag]
+socks -> shoes
+underwear -> shoes
+underwear -> pants
+pants -> shoes
+pants -> belt
+belt -> jacket
+shirt -> belt
+shirt -> tie
+tie -> jacket

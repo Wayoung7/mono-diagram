@@ -9,6 +9,7 @@ use std::io::stdout;
 
 use args::{Cli, Commands};
 use clap::Parser;
+use clipboard::{ClipboardContext, ClipboardProvider};
 use crossterm::{cursor, execute, terminal};
 use parser::{parse, write};
 use utils::add_prefix;
@@ -23,7 +24,7 @@ fn main() {
     //     Commands::Watch { file } => watch_cmd(file, prefix),
     //     _ => (),
     // }
-    build_cmd("examples/dag");
+    copy_cmd("examples/test", None);
 }
 
 fn build_cmd(file: &str) {
@@ -56,5 +57,20 @@ fn watch_cmd(file: &str, prefix: Option<String>) {
             println!("{}", e);
         }
         _ => (),
+    }
+}
+
+fn copy_cmd(file: &str, prefix: Option<String>) {
+    let result = parse(file).and_then(|d| write(&d));
+    match result {
+        Ok(d) => {
+            let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+            ctx.set_contents(add_prefix(
+                String::from_utf8_lossy(&d).to_string(),
+                &prefix.unwrap_or("".to_string()),
+            ))
+            .unwrap();
+        }
+        Err(e) => println!("{}", e),
     }
 }
