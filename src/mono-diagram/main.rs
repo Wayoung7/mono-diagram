@@ -21,11 +21,10 @@ fn main() {
     match &cli.command {
         Commands::Build { file } => build_cmd(file),
         Commands::Print { file } => print_cmd(file, prefix),
-        Commands::Watch { file } => watch_cmd(file, prefix),
+        // Commands::Watch { file } => watch_cmd(file, prefix),
         Commands::Copy { file } => copy_cmd(file, prefix),
         _ => (),
     }
-    // print_cmd("examples/dag3", None);
 }
 
 fn build_cmd(file: &str) {

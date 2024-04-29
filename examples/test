@@ -1,9 +1,10 @@
 [binary_tree]
 a->b,c
-b->,f
+b->d,f
+f->fa,fb
 c->k,m
 k->e,
-e->n,
+m->,x
 
 a:2
 b:0.42
@@ -12,8 +13,9 @@ f:-3
 k:abc
 m:2
 d:001
-a:7
-n:7
+fa:451
+fb:8.90
+x:1.2
 
 [table] 
 Base Class Member|Public Inheritance|Protected Inheritance|Private Inheritance
