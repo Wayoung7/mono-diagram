@@ -12,20 +12,24 @@ use pest_derive::Parser;
 use petgraph::{
     graph::{DiGraph, EdgeIndex, NodeIndex},
     visit::{Dfs, EdgeRef, IntoEdgeReferences, IntoNeighbors, IntoNeighborsDirected},
-    Direction::{Incoming, Outgoing},
+    Direction::{self, Incoming, Outgoing},
     Graph,
 };
 use rand::{seq::IteratorRandom, thread_rng, Rng};
 
 use super::Diagram;
 
-const PALETTE: [char; 3] = ['+', '-', '|'];
+const PALETTE: &str = "┌─┐││└─┘┬│─└┐┌┘V";
+type Digraph = DiGraph<NodeData, EdgeData>;
 
 #[derive(Debug, Default)]
 pub struct DagGraph {
-    data: DiGraph<NodeData, ()>,
+    data: Digraph,
     max_width: usize,
     max_height: usize,
+    connections: Vec<Vec<Connection>>,
+    spacing: Vec<(isize, isize)>,
+    line_height: Vec<usize>,
 }
 
 impl Diagram for DagGraph {
@@ -35,7 +39,7 @@ impl Diagram for DagGraph {
         let diagram = DagGraphParser::parse(Rule::diagram, input)
             .map_err(|e| {
                 Error::msg(format!(
-                    "parsing error: incorrect binary_tree grammar, context: {}",
+                    "parsing error: incorrect dag grammar, context: {}",
                     e.line()
                 ))
             })?
@@ -61,16 +65,29 @@ impl Diagram for DagGraph {
             }
         }
         // println!("{:#?}\n\n{:#?}", relationship_map, assign_map);
-        let dag: Graph<NodeData, ()> = init_dag(&relationship_map);
+        let dag = init_dag(&relationship_map);
         let (mut dag, max_level) = assign_level(dag);
         dag = replace_text(add_dummy(dag), &assign_map);
         let levels = level_cnt(&dag, max_level);
         dag = permute(dag, &levels);
         let perm_levels = get_perm_levels(&dag, max_level);
-        let (_w, _h) = place_node(&mut dag, &levels, &perm_levels);
+        let (_w, _, line_height) = place_node(&mut dag, &levels, &perm_levels);
         self.max_width = _w;
-        self.max_height = _h;
-        println!("{}, {}", _w, _h);
+        // for i in dag.edge_indices() {
+        //     let (s, t) = dag.edge_endpoints(i).unwrap();
+        //     println!("{}->{}", dag[s].value, dag[t].value);
+        // }
+        // print!("\n");
+        (self.connections, self.spacing) = add_connections(&mut dag, &perm_levels);
+        self.max_height = self
+            .spacing
+            .iter()
+            .map(|s| (s.1 - s.0) as usize)
+            .sum::<usize>()
+            + line_height.iter().sum::<usize>();
+        self.line_height = line_height;
+        // println!("{}, {}", _w, self.max_height);
+        // println!("{:#?}", self.connections);
         // print_dag(&dag);
 
         // print_layer(&dag, max_level);
@@ -79,29 +96,129 @@ impl Diagram for DagGraph {
     }
 
     fn write(&self) -> anyhow::Result<Vec<u8>> {
-        let mut buffer = vec![vec![' '; self.max_width + 1]; self.max_height];
+        let mut buffer = vec![vec![' '; self.max_width]; self.max_height];
+        // println!("buffer: {}, {}", buffer[0].len(), buffer.len());
         for n in self.data.node_indices() {
             let (x, y) = self.data[n].pos;
             let (w, h) = (self.data[n].width, self.data[n].height);
             // println!("{} {} {} {}", x, y, w, h);
 
             // Draw corner
-            buffer[y][x] = PALETTE[0];
-            buffer[y][x + w - 1] = PALETTE[0];
-            buffer[y + h - 1][x] = PALETTE[0];
-            buffer[y + h - 1][x + w - 1] = PALETTE[0];
+            if self.data[n].dummy {
+                buffer[y][x] = PALETTE.chars().nth(9).unwrap();
+                buffer[y + h - 1][x] = PALETTE.chars().nth(9).unwrap();
+            } else {
+                buffer[y][x] = PALETTE.chars().nth(0).unwrap();
+                buffer[y][x + w - 1] = PALETTE.chars().nth(2).unwrap();
+                buffer[y + h - 1][x] = PALETTE.chars().nth(5).unwrap();
+                buffer[y + h - 1][x + w - 1] = PALETTE.chars().nth(7).unwrap();
+            }
+            // Draw edge
             for _x in (x + 1)..(x + w - 1) {
-                buffer[y][_x] = PALETTE[1];
-                buffer[y + h - 1][_x] = PALETTE[1];
+                buffer[y][_x] = PALETTE.chars().nth(1).unwrap();
+                buffer[y + h - 1][_x] = PALETTE.chars().nth(6).unwrap();
             }
             for _y in (y + 1)..(y + h - 1) {
-                buffer[_y][x] = PALETTE[2];
-                buffer[_y][x + w - 1] = PALETTE[2];
+                buffer[_y][x] = PALETTE.chars().nth(3).unwrap();
+                buffer[_y][x + w - 1] = PALETTE.chars().nth(4).unwrap();
             }
             for (idx, c) in self.data[n].value.chars().enumerate() {
                 buffer[y + 1][x + 2 + idx] = c;
             }
         }
+
+        // Draw straight connections
+        for l in self.connections.iter() {
+            for con in l {
+                if let Connection::Straight { from, dummy } = con {
+                    let mut _y = from.1 + 1;
+                    while buffer[_y][from.0] == ' ' {
+                        buffer[_y][from.0] = PALETTE.chars().nth(9).unwrap();
+                        _y += 1;
+                    }
+                    if !dummy.0 {
+                        buffer[from.1][from.0] = PALETTE.chars().nth(8).unwrap();
+                    }
+                    if !dummy.1 {
+                        buffer[_y][from.0] = PALETTE.chars().nth(15).unwrap();
+                    }
+                }
+            }
+        }
+
+        // Draw other connections
+        for (idx, l) in self.connections.iter().enumerate() {
+            for con in l {
+                if let Connection::Bent { x1, x2, y, dummy } = con {
+                    let y0 = self.line_height.iter().take(idx + 1).sum::<usize>()
+                        + self
+                            .spacing
+                            .iter()
+                            .map(|s| (s.1 - s.0) as usize)
+                            .take(idx)
+                            .sum::<usize>();
+                    let _y = y0 + (y - self.spacing[idx].0) as usize;
+                    // Draw corner
+                    if x1 < x2 {
+                        buffer[_y][*x1] = PALETTE.chars().nth(11).unwrap();
+                        buffer[_y][*x2] = PALETTE.chars().nth(12).unwrap();
+                    } else {
+                        buffer[_y][*x1] = PALETTE.chars().nth(14).unwrap();
+                        buffer[_y][*x2] = PALETTE.chars().nth(13).unwrap();
+                    }
+                    // Draw first vertical
+                    let mut __y = _y - 1;
+                    while buffer[__y][*x1] == ' ' {
+                        buffer[__y][*x1] = PALETTE.chars().nth(9).unwrap();
+                        __y -= 1;
+                    }
+                    if !dummy.0 {
+                        buffer[__y][*x1] = PALETTE.chars().nth(8).unwrap();
+                    }
+
+                    // Draw second vertical
+                    __y = _y + 1;
+                    while buffer[__y][*x2] == ' ' {
+                        buffer[__y][*x2] = PALETTE.chars().nth(9).unwrap();
+                        __y += 1;
+                    }
+                    if !dummy.1 {
+                        buffer[__y][*x2] = PALETTE.chars().nth(15).unwrap();
+                    }
+
+                    // Draw horizontal
+                    // let (_x1, _x2) = (min(x1, x2), max(x1, x2));
+                    // for h in *_x1 + 1..*_x2 {
+                    //     if buffer[_y][h] == ' ' {
+                    //         buffer[_y][h] = PALETTE.chars().nth(10).unwrap();
+                    //     }
+                    // }
+                }
+            }
+        }
+        for (idx, l) in self.connections.iter().enumerate() {
+            for con in l {
+                if let Connection::Bent { x1, x2, y, .. } = con {
+                    let y0 = self.line_height.iter().take(idx + 1).sum::<usize>()
+                        + self
+                            .spacing
+                            .iter()
+                            .map(|s| (s.1 - s.0) as usize)
+                            .take(idx)
+                            .sum::<usize>();
+                    let _y = y0 + (y - self.spacing[idx].0) as usize;
+                    // println!("y: {}, x1: {}, x2: {}", _y, x1, x2);
+                    // Draw horizontal
+                    let (_x1, _x2) = (min(x1, x2), max(x1, x2));
+                    for h in *_x1 + 1..*_x2 {
+                        if _y < buffer.len() && h < buffer[0].len() && buffer[_y][h] == ' ' {
+                            buffer[_y][h] = PALETTE.chars().nth(10).unwrap();
+                        }
+                    }
+                }
+            }
+        }
+
         let mut res: Vec<u8> = Vec::new();
         for row in buffer.iter() {
             for c in row.iter() {
@@ -113,7 +230,7 @@ impl Diagram for DagGraph {
     }
 }
 
-fn get_perm_levels(g: &DiGraph<NodeData, ()>, max_level: usize) -> Vec<Vec<NodeIndex>> {
+fn get_perm_levels(g: &Digraph, max_level: usize) -> Vec<Vec<NodeIndex>> {
     let mut res = vec![vec![]; max_level];
     for n in g.node_indices() {
         res[g[n].level - 1].push((n, g[n].permutation));
@@ -127,12 +244,12 @@ fn get_perm_levels(g: &DiGraph<NodeData, ()>, max_level: usize) -> Vec<Vec<NodeI
 }
 
 fn place_node(
-    g: &mut DiGraph<NodeData, ()>,
+    g: &mut Digraph,
     levels: &Vec<usize>,
     perm_levels: &Vec<Vec<NodeIndex>>,
-) -> (usize, usize) {
+) -> (usize, usize, Vec<usize>) {
     fn shift_right(
-        g: &mut DiGraph<NodeData, ()>,
+        g: &mut Digraph,
         perm_levels: &Vec<Vec<NodeIndex>>,
         level: usize,
         perm: usize,
@@ -146,26 +263,8 @@ fn place_node(
         }
     }
 
-    fn shift_down(
-        g: &mut DiGraph<NodeData, ()>,
-        perm_levels: &Vec<Vec<NodeIndex>>,
-        level: usize,
-        amount: usize,
-    ) {
-    }
-
-    let mut res = g.clone();
     let mut cur_row = 0;
     let mut max_col = 0;
-    // for l in 1..=levels.len() {
-    //     let mut cur_col = 0;
-    //     for p in 0..levels[l - 1] {
-    //         res[perm_levels[&(l, p)]].pos = (cur_col, cur_row);
-    //         cur_col += res[perm_levels[&(l, p)]].width + 1;
-    //     }
-    //     max_col = max(cur_col, max_col);
-    //     cur_row += 4;
-    // }
 
     for r in perm_levels {
         let mut cur_col = 0;
@@ -174,89 +273,362 @@ fn place_node(
             cur_col += g[*c].width + 1;
         }
         max_col = max(cur_col, max_col);
-        cur_row += 4;
+        cur_row += 3;
     }
+    let row_height: Vec<usize> = vec![3; levels.len()];
 
     let cl = cal_crossings_levels(&g, levels.len());
     let mut max_shift_right = 0;
-    // Go from top to bottom
 
-    for (idx1, two_r) in perm_levels.windows(2).enumerate() {
-        println!("{}.", idx1);
-        print_layer(g, perm_levels);
-        if cl[idx1] != 0 {
-            continue;
+    const MAX_LOOP: usize = 3;
+    let mut loop_cnt = 0;
+    while loop_cnt < MAX_LOOP {
+        for (idx1, two_r) in perm_levels.windows(2).enumerate() {
+            // println!("{}.", idx1);
+            // print_layer(g, perm_levels);
+            if cl[idx1] != 0 {
+                continue;
+            }
+            for (idx2, n) in two_r[1].iter().enumerate() {
+                let new_x = g.neighbors_directed(*n, Incoming).fold(0, |acc, x| {
+                    let new_x = if g[*n].dummy && g[x].dummy {
+                        g[x].pos.0
+                    } else if !g[*n].dummy && !g[x].dummy {
+                        g[x].pos.0 + 2
+                    } else {
+                        g[x].pos.0 + 1
+                    };
+                    if new_x > acc {
+                        new_x
+                    } else {
+                        acc
+                    }
+                });
+                let shift: isize = new_x as isize - g[*n].pos.0 as isize - g[*n].width as isize + 1;
+                if shift > 0 {
+                    if g[*n].dummy {
+                        g[*n].pos.0 += shift as usize;
+                    } else {
+                        g[*n].width += shift as usize;
+                    }
+                    max_shift_right = max(max_shift_right, shift as usize);
+                    shift_right(g, perm_levels, idx1 + 2, idx2 + 1, shift as usize);
+                }
+            }
         }
-        for (idx2, n) in two_r[1].iter().enumerate() {
-            let new_x = g.neighbors_directed(*n, Incoming).fold(0, |acc, x| {
-                let new_x = if g[x].dummy {
-                    g[x].pos.0 + 1
-                } else {
-                    g[x].pos.0 + 2
-                };
-                if new_x > acc {
-                    new_x
-                } else {
-                    acc
+
+        for (idx1, two_r) in perm_levels.windows(2).enumerate().rev() {
+            // println!("{}.", idx1);
+            // print_layer(g, perm_levels);
+            if cl[idx1] != 0 {
+                continue;
+            }
+            for (idx2, n) in two_r[0].iter().enumerate() {
+                let new_x = g.neighbors_directed(*n, Outgoing).fold(0, |acc, x| {
+                    let new_x = if g[*n].dummy && g[x].dummy {
+                        g[x].pos.0
+                    } else if !g[*n].dummy && !g[x].dummy {
+                        g[x].pos.0 + 2
+                    } else {
+                        g[x].pos.0 + 1
+                    };
+                    if new_x > acc {
+                        new_x
+                    } else {
+                        acc
+                    }
+                });
+                let shift: isize = new_x as isize - g[*n].pos.0 as isize - g[*n].width as isize + 1;
+                if shift > 0 {
+                    if g[*n].dummy {
+                        g[*n].pos.0 += shift as usize;
+                    } else {
+                        g[*n].width += shift as usize;
+                    }
+                    max_shift_right = max(max_shift_right, shift as usize);
+                    shift_right(g, perm_levels, idx1 + 1, idx2 + 1, shift as usize);
                 }
-            });
-            let shift: isize = new_x as isize - g[*n].pos.0 as isize - g[*n].width as isize + 1;
-            if shift > 0 {
-                if g[*n].dummy {
-                    g[*n].pos.0 += shift as usize;
-                } else {
-                    g[*n].width += shift as usize;
+            }
+        }
+        loop_cnt += 1;
+    }
+
+    (max_col + max_shift_right, cur_row, row_height)
+}
+
+fn add_connections(
+    g: &mut Digraph,
+    perm_levels: &Vec<Vec<NodeIndex>>,
+) -> (Vec<Vec<Connection>>, Vec<(isize, isize)>) {
+    fn shift_down(g: &mut Digraph, perm_levels: &Vec<Vec<NodeIndex>>, level: usize, amount: usize) {
+        for r in &perm_levels[level - 1..] {
+            for c in r {
+                g[*c].pos.1 += amount;
+            }
+        }
+    }
+    fn shift_right_one(g: &mut Digraph, connections: &mut Vec<Vec<Connection>>, x: usize) {
+        for n in g.node_weights_mut() {
+            if n.pos.0 >= x {
+                n.pos.0 += 1;
+            } else if n.pos.0 < x && n.pos.0 + n.width - 1 >= x {
+                n.width += 1;
+            }
+        }
+        for r in connections.iter_mut() {
+            for con in r.iter_mut() {
+                match con {
+                    Connection::Straight { from, dummy } => {
+                        if from.0 >= x {
+                            from.0 += 1;
+                        }
+                    }
+                    Connection::Bent { x1, x2, y, dummy } => {
+                        if *x1 >= x {
+                            *x1 += 1;
+                        }
+                        if *x2 >= x {
+                            *x2 += 1;
+                        }
+                    }
                 }
-                max_shift_right = max(max_shift_right, shift as usize);
-                shift_right(g, perm_levels, idx1 + 2, idx2 + 1, shift as usize);
+            }
+        }
+    }
+    fn overlap(
+        (x1, w1, dummy1): (usize, usize, bool),
+        (x2, w2, dummy2): (usize, usize, bool),
+    ) -> Option<usize> {
+        if dummy1 && dummy2 {
+            if x1 == x2 {
+                Some(x1)
+            } else {
+                None
+            }
+        } else if dummy1 {
+            if x1 > x2 && x1 < x2 + w2 - 1 {
+                Some(x1)
+            } else {
+                None
+            }
+        } else if dummy2 {
+            if x2 > x1 && x2 < x1 + w1 - 1 {
+                Some(x2)
+            } else {
+                None
+            }
+        } else {
+            if x1 + w1 - 1 < x2 + 2 || x2 + w2 - 1 < x1 + 2 {
+                None
+            } else {
+                Some(max(x1, x2) + 1)
             }
         }
     }
 
-    for (idx1, two_r) in perm_levels.windows(2).enumerate().rev() {
-        println!("{}.", idx1);
-        print_layer(g, perm_levels);
-        if cl[idx1] != 0 {
-            continue;
-        }
-        for (idx2, n) in two_r[0].iter().enumerate() {
-            let new_x = g.neighbors_directed(*n, Outgoing).fold(0, |acc, x| {
-                let new_x = if g[x].dummy {
-                    g[x].pos.0 + 1
-                } else {
-                    g[x].pos.0 + 2
-                };
-                if new_x > acc {
-                    new_x
-                } else {
-                    acc
+    let mut ct: Vec<Vec<Connection>> = vec![vec![]; perm_levels.len() - 1];
+
+    fn connections_contain_x(c: &Vec<Vec<Connection>>, i: usize, x: usize, d: Direction) -> bool {
+        for con in &c[i] {
+            if let Connection::Straight { from, .. } = con {
+                if from.0 == x {
+                    return true;
                 }
-            });
-            let shift: isize = new_x as isize - g[*n].pos.0 as isize - g[*n].width as isize + 1;
-            if shift > 0 {
-                g[*n].width += shift as usize;
-                max_shift_right = max(max_shift_right, shift as usize);
-                shift_right(g, perm_levels, idx1 + 2, idx2 + 1, shift as usize);
             }
+            if let Connection::Bent { x1, x2, .. } = con {
+                if d == Outgoing && *x1 == x {
+                    return true;
+                }
+                if d == Incoming && *x2 == x {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    fn bent_overlap(
+        c: &Vec<Vec<Connection>>,
+        i: usize,
+        y_spacing: isize,
+        x3: usize,
+        x4: usize,
+    ) -> bool {
+        for con in &c[i] {
+            if let Connection::Bent { x1, x2, y, .. } = con {
+                let (_x1, _x2) = if x1 < x2 { (x1, x2) } else { (x2, x1) };
+                let (_x3, _x4) = if x3 < x4 { (x3, x4) } else { (x4, x3) };
+                if y_spacing == *y {
+                    if *_x2 < _x3 || _x4 < *_x1 {
+                    } else {
+                        return true;
+                    }
+                }
+                if *_x1 == x4 && y_spacing <= *y || *_x2 == x3 && y_spacing >= *y {
+                    return true;
+                }
+            }
+        }
+        // print!("  <({}, ({:?}, ..)) NOT OVERLAP>  ", y_spacing, (x3, x4));
+        return false;
+    }
+
+    // Make straight connections
+    for e in g.edge_indices() {
+        let (s, t) = g.edge_endpoints(e).unwrap();
+        if let Some(x) = overlap(
+            (g[s].pos.0, g[s].width, g[s].dummy),
+            (g[t].pos.0, g[t].width, g[t].dummy),
+        ) {
+            ct[g[s].level - 1].push(Connection::Straight {
+                from: (x, g[s].pos.1 + g[s].height - 1),
+                dummy: (g[s].dummy, g[t].dummy),
+            });
+            g[e].visited = true;
         }
     }
 
-    // for r in 1..levels.len() {
-    //     let next_row = r + 1;
-    //     for c in 0..levels[r] {
-    //         if cl[r - 1] != 0 {
-    //             break;
-    //         }
-    //         let cn = perm_levels[&(next_row, c)];
-    //         let p = res.neighbors_directed(cn, Incoming);
-    //         let mut cur_node = res.node_weight_mut(perm_levels[&(next_row, c)]).unwrap();
+    // Make other connections
+    // for e in g.edge_indices() {
+    //     if g[e].visited == false {
+    //         let (s, t) = g.edge_endpoints(e).unwrap();
     //     }
     // }
 
-    (max_col + max_shift_right, cur_row)
+    let mut spacing: Vec<(isize, isize)> = vec![(0, 0); perm_levels.len() - 1];
+    // println!("{:#?}", connections);
+    // let connections_bent: Vec<Vec<Connection>> = vec![vec![]; perm_levels.len() - 1];
+    // println!(
+    //     "{:?}",
+    //     connections.iter().map(|l| l.len()).collect::<Vec<_>>()
+    // );
+    for (idx, r) in perm_levels[..perm_levels.len() - 1].iter().enumerate() {
+        for &c in r {
+            // For each node
+            let mut out_offset = 1;
+            let mut childs = g
+                .edges_directed(c, Outgoing)
+                .filter(|f| f.weight().visited == false)
+                .collect::<Vec<_>>();
+            childs.sort_by(|a, b| g[a.target()].pos.0.cmp(&g[b.target()].pos.0));
+            if spacing[idx] == (0, 0) && childs.len() != 0 {
+                spacing[idx] = (0, 1);
+            }
+            // println!("CurNode: {}", g[c].value);
+            for child_edge in childs.into_iter() {
+                // print!("Child {}: ", g[child_edge.target()].value);
+                // if child_edge.weight().visited == false {
+                assert!(!child_edge.weight().visited);
+                let t = child_edge.target();
+                out_offset = if g[c].dummy {
+                    0
+                } else {
+                    while connections_contain_x(&ct, idx, g[c].pos.0 + out_offset, Outgoing) {
+                        out_offset += 1;
+                    }
+                    out_offset
+                };
+                // print!("out_offset: {}, ", out_offset);
+                assert!(out_offset <= g[c].width);
+                let in_offset = if g[t].dummy {
+                    // println!("target: {} is dummy", g[t].value);
+                    0
+                } else {
+                    // println!("target: {} is not dummy", g[t].value);
+                    let mut _in_offset = 1;
+                    while connections_contain_x(&ct, idx, g[t].pos.0 + _in_offset, Incoming) {
+                        _in_offset += 1;
+                    }
+                    _in_offset
+                };
+                // print!("in_offset: {}, ", in_offset);
+                assert!(in_offset < g[t].width);
+                let mut found = false;
+                let x_from = g[c].pos.0 + out_offset;
+                let x_to = g[t].pos.0 + in_offset;
+                assert!(x_from != x_to);
+                for s in if x_to > x_from {
+                    spacing[idx].0..spacing[idx].1
+                } else {
+                    spacing[idx].1..spacing[idx].0
+                } {
+                    if !bent_overlap(&ct, idx, s, x_from, x_to) {
+                        ct[idx].push(Connection::Bent {
+                            x1: x_from,
+                            x2: x_to,
+                            y: s,
+                            dummy: (g[c].dummy, g[t].dummy),
+                        });
+                        found = true;
+                        // print!("{}->{}, y: {} ", g[c].value, g[t].value, s);
+                        break;
+                    }
+                }
+                if !found {
+                    if x_to > x_from {
+                        ct[idx].push(Connection::Bent {
+                            x1: x_from,
+                            x2: x_to,
+                            y: spacing[idx].0 - 1,
+                            dummy: (g[c].dummy, g[t].dummy),
+                        });
+                        spacing[idx].0 -= 1;
+                    } else {
+                        ct[idx].push(Connection::Bent {
+                            x1: x_from,
+                            x2: x_to,
+                            y: spacing[idx].1,
+                            dummy: (g[c].dummy, g[t].dummy),
+                        });
+                        spacing[idx].1 += 1;
+                    }
+                    // print!("{}->{} shift, y: {} ", g[c].value, g[t].value, spacing[idx]);
+                }
+                // println!(
+                //     "{:?}",
+                //     connections.iter().map(|l| l.len()).collect::<Vec<_>>()
+                // );
+                // print!("\n");
+                // }
+            }
+        }
+        // println!("{:#?}", connections);
+    }
+    // println!("{:?}", spacing);
+    // Shift things down
+    for (idx, shift) in spacing.iter().enumerate() {
+        shift_down(g, perm_levels, idx + 2, (shift.1 - shift.0) as usize);
+        for r in ct[idx + 1..].iter_mut() {
+            for con in r.iter_mut() {
+                if let Connection::Straight { from, .. } = con {
+                    from.1 += (shift.1 - shift.0) as usize;
+                }
+            }
+        }
+    }
+
+    // g.map(
+    //     |_, _| {},
+    //     |i, d| {
+    //         let (source, target) = g.edge_endpoints(i).unwrap();
+    //         if overlap(
+    //             (g[source].pos.0, g[source].width),
+    //             (g[target].pos.0, g[target].width),
+    //         ) {}
+    //     },
+    // );
+    // for r in perm_levels {
+    //     for c in r {
+    //         for e in g.edges_directed(*c, Outgoing) {
+    //             g[e.source()].height = 4;
+    //         }
+    //     }
+    // }
+
+    (ct, spacing)
 }
 
-fn init_dag(r: &HashSet<(&str, &str)>) -> DiGraph<NodeData, ()> {
+fn init_dag(r: &HashSet<(&str, &str)>) -> Digraph {
     let mut g = DiGraph::new();
     let mut added: HashMap<&str, usize> = HashMap::new();
     for (s, t) in r.iter() {
@@ -274,12 +646,16 @@ fn init_dag(r: &HashSet<(&str, &str)>) -> DiGraph<NodeData, ()> {
             });
             added.insert(*t, j.index());
         }
-        g.update_edge(NodeIndex::new(added[*s]), NodeIndex::new(added[*t]), ());
+        g.update_edge(
+            NodeIndex::new(added[*s]),
+            NodeIndex::new(added[*t]),
+            EdgeData::default(),
+        );
     }
     g
 }
 
-fn assign_level(g: DiGraph<NodeData, ()>) -> (DiGraph<NodeData, ()>, usize) {
+fn assign_level(g: Digraph) -> (Digraph, usize) {
     let mut res = g.clone();
     let mut max_level = 0;
     g.node_indices()
@@ -306,7 +682,7 @@ fn assign_level(g: DiGraph<NodeData, ()>) -> (DiGraph<NodeData, ()>, usize) {
     (res, max_level)
 }
 
-fn add_dummy(g: DiGraph<NodeData, ()>) -> DiGraph<NodeData, ()> {
+fn add_dummy(g: Digraph) -> Digraph {
     let mut res = g.clone();
     let mut edge_to_remove: Vec<EdgeIndex> = Vec::new();
     for e in g.edge_indices() {
@@ -324,10 +700,10 @@ fn add_dummy(g: DiGraph<NodeData, ()>) -> DiGraph<NodeData, ()> {
                     width: 1,
                     ..Default::default()
                 });
-                res.update_edge(last_node, cur_node, ());
+                res.update_edge(last_node, cur_node, EdgeData::default());
                 last_node = cur_node;
             });
-            res.update_edge(last_node, t, ());
+            res.update_edge(last_node, t, EdgeData::default());
             // res.remove_edge(e);
         }
     }
@@ -337,15 +713,15 @@ fn add_dummy(g: DiGraph<NodeData, ()>) -> DiGraph<NodeData, ()> {
     res
 }
 
-fn level_cnt(g: &DiGraph<NodeData, ()>, max_level: usize) -> Vec<usize> {
-    let mut res: Vec<usize> = repeat(0).take(max_level).collect();
+fn level_cnt(g: &Digraph, max_level: usize) -> Vec<usize> {
+    let mut res: Vec<usize> = vec![0; max_level];
     for n in g.node_indices() {
         res[g[n].level - 1] += 1;
     }
     res
 }
 
-fn replace_text(g: DiGraph<NodeData, ()>, a: &HashMap<&str, &str>) -> DiGraph<NodeData, ()> {
+fn replace_text(g: Digraph, a: &HashMap<&str, &str>) -> Digraph {
     let mut res = g.clone();
     for n in g.node_indices() {
         let mut len = g[n].value.len();
@@ -355,11 +731,11 @@ fn replace_text(g: DiGraph<NodeData, ()>, a: &HashMap<&str, &str>) -> DiGraph<No
                 len = res[n].value.len();
             }
         }
-        if g.neighbors_directed(n, Incoming).count() > len + 2 {
-            len = g.neighbors_directed(n, Incoming).count() - 2;
+        if g.neighbors_directed(n, Incoming).count() > len {
+            len = g.neighbors_directed(n, Incoming).count();
         }
-        if g.neighbors_directed(n, Outgoing).count() > len + 2 {
-            len = g.neighbors_directed(n, Outgoing).count() - 2;
+        if g.neighbors_directed(n, Outgoing).count() > len {
+            len = g.neighbors_directed(n, Outgoing).count();
         }
         res[n].width = if g[n].dummy { 1 } else { len + 4 };
         res[n].height = 3;
@@ -367,7 +743,7 @@ fn replace_text(g: DiGraph<NodeData, ()>, a: &HashMap<&str, &str>) -> DiGraph<No
     res
 }
 
-fn permute(g: DiGraph<NodeData, ()>, levels: &Vec<usize>) -> DiGraph<NodeData, ()> {
+fn permute(g: Digraph, levels: &Vec<usize>) -> Digraph {
     // let mut permutation: HashMap<usize, Vec<NodeIndex>> = HashMap::new();
     // for n in g.node_indices() {
     //     permutation
@@ -393,7 +769,7 @@ fn permute(g: DiGraph<NodeData, ()>, levels: &Vec<usize>) -> DiGraph<NodeData, (
         + 1;
     let mut outer_optimal = res.clone();
     let mut outer_optimal_crossings = cal_crossings(&res, levels.len());
-    const OUTER_MAX_LOOP: usize = 23;
+    const OUTER_MAX_LOOP: usize = 3;
     let mut outer_loop_cnt = 0;
     loop {
         if outer_loop_cnt >= OUTER_MAX_LOOP {
@@ -412,7 +788,7 @@ fn permute(g: DiGraph<NodeData, ()>, levels: &Vec<usize>) -> DiGraph<NodeData, (
             );
             // print_layer(&inner_optimal, levels.len());
             let mut inner_optimal_crossings = cal_crossings(&inner_optimal, levels.len());
-            const INNER_MAX_LOOP: usize = 23;
+            const INNER_MAX_LOOP: usize = 13;
             let mut inner_loop_cnt = 0;
             let mut step: isize = -1;
             let mut current_level = largest_level;
@@ -480,11 +856,7 @@ fn permute(g: DiGraph<NodeData, ()>, levels: &Vec<usize>) -> DiGraph<NodeData, (
     outer_optimal
 }
 
-fn get_rand_permute_level(
-    g: DiGraph<NodeData, ()>,
-    max_level: usize,
-    level_len: usize,
-) -> DiGraph<NodeData, ()> {
+fn get_rand_permute_level(g: Digraph, max_level: usize, level_len: usize) -> Digraph {
     let mut res = g.clone();
     let sequence: Vec<usize> = (0..level_len).collect();
     let mut rand_perm = sequence.clone();
@@ -503,36 +875,7 @@ fn get_rand_permute_level(
     res
 }
 
-fn print_layer(g: &DiGraph<NodeData, ()>, perm_level: &Vec<Vec<NodeIndex>>) {
-    // println!("");
-    // for l in 1..=max_level {
-    //     let mut line: Vec<(usize, &str)> = Vec::new();
-    //     for n in g.node_indices() {
-    //         if g[n].level == l {
-    //             line.push((
-    //                 g[n].permutation,
-    //                 if g[n].dummy { "#" } else { g[n].value.as_str() },
-    //             ));
-    //         }
-    //     }
-    //     line.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-    //     for p in line.iter() {
-    //         print!("{} ", p.1);
-    //     }
-    //     println!("");
-    // }
-    // println!("");
-    // println!("Crossings: {}", cal_crossings(g, max_level));
-    for r in perm_level {
-        for c in r {
-            print!("(pos: {:?}, width: {}) ", g[*c].pos, g[*c].width);
-        }
-        print!("\n");
-    }
-    print!("\n");
-}
-
-fn cal_crossings(g: &DiGraph<NodeData, ()>, max_level: usize) -> usize {
+fn cal_crossings(g: &Digraph, max_level: usize) -> usize {
     let mut cnt = 0;
     for l in 1..max_level {
         let mut lines_level: Vec<(usize, usize)> = Vec::new();
@@ -549,7 +892,7 @@ fn cal_crossings(g: &DiGraph<NodeData, ()>, max_level: usize) -> usize {
     cnt
 }
 
-fn cal_crossings_levels(g: &DiGraph<NodeData, ()>, max_level: usize) -> Vec<usize> {
+fn cal_crossings_levels(g: &Digraph, max_level: usize) -> Vec<usize> {
     let mut cl = vec![0; max_level - 1];
     for l in 1..max_level {
         let mut lines_level: Vec<(usize, usize)> = Vec::new();
@@ -567,38 +910,7 @@ fn cal_crossings_levels(g: &DiGraph<NodeData, ()>, max_level: usize) -> Vec<usiz
     cl
 }
 
-fn print_dag(g: &DiGraph<NodeData, ()>) {
-    // let mut dfs = Dfs::new(g, NodeIndex::new(0));
-    for n in g.node_indices() {
-        println!(
-            "Index: {}, Level: {}, Value: {}, Dummy: {:?}, Size: ({}, {}), Permutation: {}, Incoming: {}, OutGoing: {}",
-            n.index(),
-            g[n].level,
-            g[n].value,
-            g[n].dummy,
-            g[n].width,
-            g[n].height,
-            g[n].permutation,
-            g.neighbors_directed(n, Incoming)
-                .map(|neighbor| &g[neighbor].value)
-                .flat_map(|s| s.chars())
-                .collect::<String>(),
-            g.neighbors_directed(n, Outgoing)
-                .map(|neighbor| &g[neighbor].value)
-                .flat_map(|s| s.chars())
-                .collect::<String>(),
-        );
-    }
-    // for n in g.edge_indices() {
-    //     println!(
-    //         "Edge: ({}, {}) ",
-    //         g[g.edge_endpoints(n).unwrap().0].value,
-    //         g[g.edge_endpoints(n).unwrap().1].value
-    //     );
-    // }
-}
-
-fn cal_level(g: &DiGraph<NodeData, ()>, i: NodeIndex) -> usize {
+fn cal_level(g: &Digraph, i: NodeIndex) -> usize {
     if g[i].level == 1 {
         1
     } else {
@@ -643,15 +955,34 @@ fn has_crossing(a: (usize, usize), b: (usize, usize)) -> bool {
 }
 
 #[derive(Debug, Default, PartialEq, Clone)]
-pub struct NodeData {
-    pub level: usize,
-    pub width: usize,
-    pub height: usize,
-    pub pos: (usize, usize),
-    pub value: String,
-    pub dummy: bool,
-    pub permutation: usize,
-    pub temp_perm: f32,
+struct NodeData {
+    level: usize,
+    width: usize,
+    height: usize,
+    pos: (usize, usize),
+    value: String,
+    dummy: bool,
+    permutation: usize,
+    temp_perm: f32,
+}
+
+#[derive(Debug, Default, PartialEq, Clone)]
+struct EdgeData {
+    visited: bool,
+}
+
+#[derive(Debug, Clone)]
+enum Connection {
+    Straight {
+        from: (usize, usize),
+        dummy: (bool, bool),
+    },
+    Bent {
+        x1: usize,
+        x2: usize,
+        y: isize,
+        dummy: (bool, bool),
+    },
 }
 
 #[derive(Parser)]

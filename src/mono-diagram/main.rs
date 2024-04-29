@@ -16,15 +16,16 @@ use utils::add_prefix;
 use watch::watch;
 
 fn main() {
-    // let cli = Cli::parse();
-    // let prefix = cli.prefix;
-    // match &cli.command {
-    //     Commands::Build { file } => build_cmd(file),
-    //     Commands::Print { file } => print_cmd(file, prefix),
-    //     Commands::Watch { file } => watch_cmd(file, prefix),
-    //     _ => (),
-    // }
-    copy_cmd("examples/test", None);
+    let cli = Cli::parse();
+    let prefix = cli.prefix;
+    match &cli.command {
+        Commands::Build { file } => build_cmd(file),
+        Commands::Print { file } => print_cmd(file, prefix),
+        Commands::Watch { file } => watch_cmd(file, prefix),
+        Commands::Copy { file } => copy_cmd(file, prefix),
+        _ => (),
+    }
+    // print_cmd("examples/dag3", None);
 }
 
 fn build_cmd(file: &str) {

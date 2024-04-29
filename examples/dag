@@ -1,19 +1,24 @@
 [dag]
 
-a->b->c
-a->d->e
-c->e
-c->f
-d->f
-b->g
-c->g
+a->b
+a->c
 b->d
+c->f
+c->g
+a->f
+d->da
+d->db
+g->gg
+a->gg
 
-a:7777
-b:666
-c:44
-d:5
-e:22222
-f:3
-g:111111111111
+
+a:Home Page
+b:Main Section 1
+c:Main Section 2
+d:Subsection 1
+f:Subsection 2
+g:Subsection 3
+da:Sub-sub
+db:Sub-sub
+gg:#page#
 
