@@ -1,5 +1,4 @@
 [dag]
-
 a->b
 a->c
 b->d
@@ -9,7 +8,10 @@ a->f
 d->da
 d->db
 g->gg
-a->gg
+b->gg
+b->f
+c->da
+z->g
 
 
 a:Home Page
@@ -22,3 +24,4 @@ da:Sub-sub
 db:Sub-sub
 gg:#page#
 
+z: Another Entrance

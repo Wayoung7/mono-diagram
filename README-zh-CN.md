@@ -1,4 +1,4 @@
-<!-- README-en.md -->
+<!-- README-zh-CN.md -->
 
 
 ```
@@ -28,43 +28,43 @@ Mono-Diagram
 
 </div>
 
-A cross-platform command line tool for generating plain-text diagrams from a certain syntax. The biggest advantage of plain-text diagrams is that it can fit in anywhere.
+mono-diagram 是一个跨平台的生成纯文本图表的工具。纯文本图表的优势在于可以在任何地方显示，比如用在代码注释中。
 
-## Usage
+## 使用方法
 
-### Define diagrams
+### 定义图表
 
- The basic idea of mono-diagram is to define diagram in a file, and pass it to the program to generate planar diagrams. A file can contain multiple diagrams. Each diagram must start with a tag such as `[table]` to tell the program what kind of diagram it is.
+使用 mono-diagram 的基本思路是写一个包含一个或多个图表定义的文件，然后传入程序，程序会生成图表。每个图表开头需要用标签声明图标类型。
 
 <details>
-<summary> Binary Tree </summary>
+<summary> 二叉树 </summary>
 
-Tag: `[binary_tree]`
+标签: `[binary_tree]`
 
-Input file: 
+输入: 
 
 ```
-[binary_tree]   // Specify diagram category
-a->b,c          // Node 'a' has left child 'b' and right child 'c'
-b->d,f          // Node name is just like variables
+[binary_tree]   // 声明标签
+a->b,c          // 节点a有左子树b和右子树c
+b->d,f          // 节点名字类似于变量名
 f->fa,fb
 c->k,m
-k->e,           // Node 'k' only has one left child
+k->e,           // k只有左子树
 m->,x
 
-a:2             // Assign values to node
+a:2             // 给每个节点名赋值
 b:0.42
 c:9.5
 f:-3
 k:abc
-m:2             // Different nodes can have same value
+m:2             // 不同的节点可以有相同的值
 d:001
 fa:451
 fb:8.90
 x:1.2
 ```
 
-Output diagram:
+输出:
 
 ```
             ___2___
@@ -79,16 +79,16 @@ Output diagram:
 </details>
 
 <details>
-<summary> Directed Acyclic Graph (DAG) </summary>
+<summary> 有向非循环图 (DAG) </summary>
 
-Tag: `[dag]`
+标签: `[dag]`
 
-Input file:
+输入:
 
 ```
 [dag]
-a->b    // <NODE-NAME>-><NODE-NAME> represents an edge in the graph
-a->c    // The graph cannot have cycles
+a->b    // 节点名->节点名 代表一条边
+a->c    // 有向非循环图不能含有循环
 b->d
 c->f
 c->g
@@ -99,7 +99,7 @@ g->gg
 a->gg
 
 
-a:Home Page     // Assign values
+a:Home Page     // 赋值
 b:Main Section 1
 c:Main Section 2
 d:Subsection 1
@@ -110,7 +110,7 @@ db:Sub-sub
 gg:#page#
 ```
 
-Output diagram: 
+输出: 
 
 ```
  ┌───────────────────────────────────────────────────┐
@@ -128,28 +128,28 @@ Output diagram:
 
 ```
 
-*Note: this dag graph is not stable, meaning you may get graph with different looking*
+*注：此生成不稳定，每次生成可能会得到不同的图*
 
 </details>
 
 </details>
 
 <details>
-<summary> Table </summary>
+<summary> 表格 </summary>
 
-Tag: `[table]`
+标签: `[table]`
 
-Input file:
+输入:
 
 ```
-[table]     \\ Each column is seperated by '|' and each row is seperated by newline
+[table]     \\ 每列用 '|' 分隔，每行用换行分隔
 Base Class Member|Public Inheritance|Protected Inheritance|Private Inheritance
 Public|Public|Protected|Private
 Protected|Protected|Protected|Private
 Private|Hidden|Hidden|Hidden
 ```
 
-Output diagram: 
+输出: 
 
 ```
 +-------------------+--------------------+-----------------------+---------------------+
@@ -168,11 +168,11 @@ Output diagram:
 </details>
 
 <details>
-<summary> Grid </summary>
+<summary> 网格 </summary>
 
-Tag: `[grid]`
+标签: `[grid]`
 
-Input file:
+输入:
 
 ```
 [grid] {10, 7}      // The grid has 10 colums and 7 rows
@@ -184,7 +184,7 @@ Input file:
 2,7:k
 ```
 
-Output diagram: 
+输出: 
 
 ```
 +---+---+---+---+---+---+---+---+---+---+
@@ -206,23 +206,23 @@ Output diagram:
 
 </details>
 
-### Command Line Arguments
+### 命令行参数
 
 ```
-Usage: mono-diagram [OPTIONS] <FILE_PATH>
+用法: mono-diagram [OPTIONS] <FILE_PATH>
 
-Arguments:
+参数:
   <FILE_PATH>
-          The path to the input file
+          文件路径
 
-Options:
+选项:
   -p, --prefix <PREFIX>
-          Add a prefix to each line in the output
+          给输出的每行加一个前缀
 
-          This is useful when you want to paste the diagram to code comments
+          可用于代码注释
 
   -c, --copy
-          Copy the output to your computer clipboard
+          复制到剪贴板
 
   -h, --help
           Print help (see a summary with '-h')
@@ -231,23 +231,17 @@ Options:
           Print version
 ```
 
-#### Example commands
-
-Parse the file examples/test, and output with prefix '# ', then copy to clipboard: 
+#### 示例命令 
 
 ```bash
 mono-diagram examples/test -c -p "# " 
 ```
 
-## Examples
+## 安装
 
-You can find some sample input files in [`examples/`](./examples/) in the project directory.
+安装 [rust](https://www.rust-lang.org/tools/install) 
 
-## Installation
-
-Install [rust](https://www.rust-lang.org/tools/install) if you havn't.
-
-Then, simply run the following commands:
+然后运行命令：
 
 ~~~bash
 cargo install mono-diagram
@@ -255,15 +249,15 @@ cargo install mono-diagram
 
 ## TODO
 
-1. Node in dag can be a table. This enables you to draw class diagram (this is easy)
-2. Improve edge drawing in dag (this is hard)
-3. Add plain-text Venn diagram (this is hard)
-4. Add plain-text sequence diagram (this is easy)
-5. Make more flexible table with cells spanning multiple rows and columns
+1. dag 中的节点可以是表格 (这样就可以画类图)
+2. 优化 dag 中边的绘制
+3. 增加韦恩图
+4. 增加时序图
+5. 增加表格的单元格合并
 
-## Contribution and Help
+## 贡献和帮助
 
-Any contribution is always welcomed, even just ideas.
+非常欢迎 contribution，就算只是 contribute idea 也很欢迎
 
-Feel free to open an issue or contact me if you find any bugs.
+如有 bug 请开 issue （dag 应该是有 bug 的）
 

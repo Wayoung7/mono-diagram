@@ -1,21 +1,18 @@
 use std::{
-    borrow::{Borrow, BorrowMut},
-    cell::RefCell,
     cmp::{max, min},
     collections::{HashMap, HashSet},
-    iter::repeat,
 };
 
 use anyhow::Error;
 use pest::Parser;
 use pest_derive::Parser;
 use petgraph::{
+    algo::is_cyclic_directed,
     graph::{DiGraph, EdgeIndex, NodeIndex},
-    visit::{Dfs, EdgeRef, IntoEdgeReferences, IntoNeighbors, IntoNeighborsDirected},
+    visit::EdgeRef,
     Direction::{self, Incoming, Outgoing},
-    Graph,
 };
-use rand::{seq::IteratorRandom, thread_rng, Rng};
+use rand::{thread_rng, Rng};
 
 use super::Diagram;
 
@@ -56,7 +53,7 @@ impl Diagram for DagGraph {
                 Rule::relationship => {
                     let mut r = line.into_inner();
                     let mut from = r.next().unwrap();
-                    while let Some(to) = r.next() {
+                    for to in r {
                         relationship_map.insert((from.as_str(), to.as_str()));
                         from = to;
                     }
@@ -66,19 +63,25 @@ impl Diagram for DagGraph {
         }
         // println!("{:#?}\n\n{:#?}", relationship_map, assign_map);
         let dag = init_dag(&relationship_map);
+        if is_cyclic_directed(&dag) {
+            return Err(Error::msg(
+                "diagram error: directed acyclic graph has cycles",
+            ));
+        }
         let (mut dag, max_level) = assign_level(dag);
         dag = replace_text(add_dummy(dag), &assign_map);
         let levels = level_cnt(&dag, max_level);
         dag = permute(dag, &levels);
         let perm_levels = get_perm_levels(&dag, max_level);
         let (_w, _, line_height) = place_node(&mut dag, &levels, &perm_levels);
-        self.max_width = _w;
         // for i in dag.edge_indices() {
         //     let (s, t) = dag.edge_endpoints(i).unwrap();
         //     println!("{}->{}", dag[s].value, dag[t].value);
         // }
         // print!("\n");
-        (self.connections, self.spacing) = add_connections(&mut dag, &perm_levels);
+        let width_shift;
+        (self.connections, self.spacing, width_shift) = add_connections(&mut dag, &perm_levels);
+        self.max_width = _w + width_shift;
         self.max_height = self
             .spacing
             .iter()
@@ -118,9 +121,9 @@ impl Diagram for DagGraph {
                 buffer[y][_x] = PALETTE.chars().nth(1).unwrap();
                 buffer[y + h - 1][_x] = PALETTE.chars().nth(6).unwrap();
             }
-            for _y in (y + 1)..(y + h - 1) {
-                buffer[_y][x] = PALETTE.chars().nth(3).unwrap();
-                buffer[_y][x + w - 1] = PALETTE.chars().nth(4).unwrap();
+            for line in buffer.iter_mut().take(y + h - 1).skip(y + 1) {
+                line[x] = PALETTE.chars().nth(3).unwrap();
+                line[x + w - 1] = PALETTE.chars().nth(4).unwrap();
             }
             for (idx, c) in self.data[n].value.chars().enumerate() {
                 buffer[y + 1][x + 2 + idx] = c;
@@ -168,7 +171,7 @@ impl Diagram for DagGraph {
                     }
                     // Draw first vertical
                     let mut __y = _y - 1;
-                    while buffer[__y][*x1] == ' ' {
+                    while __y < self.max_height && *x1 < self.max_width && buffer[__y][*x1] == ' ' {
                         buffer[__y][*x1] = PALETTE.chars().nth(9).unwrap();
                         __y -= 1;
                     }
@@ -178,7 +181,7 @@ impl Diagram for DagGraph {
 
                     // Draw second vertical
                     __y = _y + 1;
-                    while buffer[__y][*x2] == ' ' {
+                    while __y < self.max_height && *x2 < self.max_width && buffer[__y][*x2] == ' ' {
                         buffer[__y][*x2] = PALETTE.chars().nth(9).unwrap();
                         __y += 1;
                     }
@@ -222,7 +225,7 @@ impl Diagram for DagGraph {
         let mut res: Vec<u8> = Vec::new();
         for row in buffer.iter() {
             for c in row.iter() {
-                res.extend_from_slice(&c.encode_utf8(&mut [0; 4]).as_bytes());
+                res.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes());
             }
             res.push(b'\n');
         }
@@ -245,12 +248,12 @@ fn get_perm_levels(g: &Digraph, max_level: usize) -> Vec<Vec<NodeIndex>> {
 
 fn place_node(
     g: &mut Digraph,
-    levels: &Vec<usize>,
+    levels: &[usize],
     perm_levels: &Vec<Vec<NodeIndex>>,
 ) -> (usize, usize, Vec<usize>) {
     fn shift_right(
         g: &mut Digraph,
-        perm_levels: &Vec<Vec<NodeIndex>>,
+        perm_levels: &[Vec<NodeIndex>],
         level: usize,
         perm: usize,
         amount: usize,
@@ -277,7 +280,7 @@ fn place_node(
     }
     let row_height: Vec<usize> = vec![3; levels.len()];
 
-    let cl = cal_crossings_levels(&g, levels.len());
+    let cl = cal_crossings_levels(g, levels.len());
     let mut max_shift_right = 0;
 
     const MAX_LOOP: usize = 3;
@@ -358,32 +361,32 @@ fn place_node(
 
 fn add_connections(
     g: &mut Digraph,
-    perm_levels: &Vec<Vec<NodeIndex>>,
-) -> (Vec<Vec<Connection>>, Vec<(isize, isize)>) {
-    fn shift_down(g: &mut Digraph, perm_levels: &Vec<Vec<NodeIndex>>, level: usize, amount: usize) {
+    perm_levels: &[Vec<NodeIndex>],
+) -> (Vec<Vec<Connection>>, Vec<(isize, isize)>, usize) {
+    fn shift_down(g: &mut Digraph, perm_levels: &[Vec<NodeIndex>], level: usize, amount: usize) {
         for r in &perm_levels[level - 1..] {
             for c in r {
                 g[*c].pos.1 += amount;
             }
         }
     }
-    fn shift_right_one(g: &mut Digraph, connections: &mut Vec<Vec<Connection>>, x: usize) {
+    fn shift_right_one(g: &mut Digraph, connections: &mut [Vec<Connection>], x: usize) {
         for n in g.node_weights_mut() {
             if n.pos.0 >= x {
                 n.pos.0 += 1;
-            } else if n.pos.0 < x && n.pos.0 + n.width - 1 >= x {
+            } else if n.pos.0 < x && n.pos.0 + n.width > x {
                 n.width += 1;
             }
         }
         for r in connections.iter_mut() {
             for con in r.iter_mut() {
                 match con {
-                    Connection::Straight { from, dummy } => {
+                    Connection::Straight { from, .. } => {
                         if from.0 >= x {
                             from.0 += 1;
                         }
                     }
-                    Connection::Bent { x1, x2, y, dummy } => {
+                    Connection::Bent { x1, x2, .. } => {
                         if *x1 >= x {
                             *x1 += 1;
                         }
@@ -417,18 +420,16 @@ fn add_connections(
             } else {
                 None
             }
+        } else if x1 + w1 - 1 < x2 + 2 || x2 + w2 - 1 < x1 + 2 {
+            None
         } else {
-            if x1 + w1 - 1 < x2 + 2 || x2 + w2 - 1 < x1 + 2 {
-                None
-            } else {
-                Some(max(x1, x2) + 1)
-            }
+            Some(max(x1, x2) + 1)
         }
     }
 
     let mut ct: Vec<Vec<Connection>> = vec![vec![]; perm_levels.len() - 1];
 
-    fn connections_contain_x(c: &Vec<Vec<Connection>>, i: usize, x: usize, d: Direction) -> bool {
+    fn connections_contain_x(c: &[Vec<Connection>], i: usize, x: usize, d: Direction) -> bool {
         for con in &c[i] {
             if let Connection::Straight { from, .. } = con {
                 if from.0 == x {
@@ -444,11 +445,11 @@ fn add_connections(
                 }
             }
         }
-        return false;
+        false
     }
 
     fn bent_overlap(
-        c: &Vec<Vec<Connection>>,
+        c: &[Vec<Connection>],
         i: usize,
         y_spacing: isize,
         x3: usize,
@@ -470,7 +471,30 @@ fn add_connections(
             }
         }
         // print!("  <({}, ({:?}, ..)) NOT OVERLAP>  ", y_spacing, (x3, x4));
-        return false;
+        false
+    }
+
+    fn vertical_overlap(
+        c: &[Vec<Connection>],
+        i: usize,
+        y_spacing: isize,
+        x3: usize,
+        x4: usize,
+    ) -> (bool, bool) {
+        let mut res = (false, false);
+        for con in &c[i] {
+            if let Connection::Bent { x1, x2, y, .. } = con {
+                let (_x1, _x2) = if x1 < x2 { (x1, x2) } else { (x2, x1) };
+                let (_x3, _x4) = if x3 < x4 { (x3, x4) } else { (x4, x3) };
+                if *_x1 == x4 && y_spacing < *y {
+                    res.1 = true;
+                }
+                if *_x2 == x3 && y_spacing > *y {
+                    res.0 = true;
+                }
+            }
+        }
+        res
     }
 
     // Make straight connections
@@ -496,56 +520,53 @@ fn add_connections(
     // }
 
     let mut spacing: Vec<(isize, isize)> = vec![(0, 0); perm_levels.len() - 1];
+    let mut shift_right = 0;
     // println!("{:#?}", connections);
     // let connections_bent: Vec<Vec<Connection>> = vec![vec![]; perm_levels.len() - 1];
     // println!(
     //     "{:?}",
     //     connections.iter().map(|l| l.len()).collect::<Vec<_>>()
     // );
+    let mut res = g.clone();
     for (idx, r) in perm_levels[..perm_levels.len() - 1].iter().enumerate() {
         for &c in r {
             // For each node
             let mut out_offset = 1;
             let mut childs = g
                 .edges_directed(c, Outgoing)
-                .filter(|f| f.weight().visited == false)
+                .filter(|f| !f.weight().visited)
                 .collect::<Vec<_>>();
             childs.sort_by(|a, b| g[a.target()].pos.0.cmp(&g[b.target()].pos.0));
-            if spacing[idx] == (0, 0) && childs.len() != 0 {
+            if spacing[idx] == (0, 0) && !childs.is_empty() {
                 spacing[idx] = (0, 1);
             }
-            // println!("CurNode: {}", g[c].value);
             for child_edge in childs.into_iter() {
-                // print!("Child {}: ", g[child_edge.target()].value);
-                // if child_edge.weight().visited == false {
+                // For each unvisited child
                 assert!(!child_edge.weight().visited);
                 let t = child_edge.target();
-                out_offset = if g[c].dummy {
+                out_offset = if res[c].dummy {
                     0
                 } else {
-                    while connections_contain_x(&ct, idx, g[c].pos.0 + out_offset, Outgoing) {
+                    while connections_contain_x(&ct, idx, res[c].pos.0 + out_offset, Outgoing) {
                         out_offset += 1;
                     }
                     out_offset
                 };
-                // print!("out_offset: {}, ", out_offset);
-                assert!(out_offset <= g[c].width);
-                let in_offset = if g[t].dummy {
-                    // println!("target: {} is dummy", g[t].value);
+                assert!(out_offset <= res[c].width);
+                let in_offset = if res[t].dummy {
                     0
                 } else {
-                    // println!("target: {} is not dummy", g[t].value);
                     let mut _in_offset = 1;
-                    while connections_contain_x(&ct, idx, g[t].pos.0 + _in_offset, Incoming) {
+                    while connections_contain_x(&ct, idx, res[t].pos.0 + _in_offset, Incoming) {
                         _in_offset += 1;
                     }
                     _in_offset
                 };
-                // print!("in_offset: {}, ", in_offset);
-                assert!(in_offset < g[t].width);
+                assert!(in_offset < res[t].width);
+
                 let mut found = false;
-                let x_from = g[c].pos.0 + out_offset;
-                let x_to = g[t].pos.0 + in_offset;
+                let mut x_from = res[c].pos.0 + out_offset;
+                let mut x_to = res[t].pos.0 + in_offset;
                 assert!(x_from != x_to);
                 for s in if x_to > x_from {
                     spacing[idx].0..spacing[idx].1
@@ -557,7 +578,7 @@ fn add_connections(
                             x1: x_from,
                             x2: x_to,
                             y: s,
-                            dummy: (g[c].dummy, g[t].dummy),
+                            dummy: (res[c].dummy, res[t].dummy),
                         });
                         found = true;
                         // print!("{}->{}, y: {} ", g[c].value, g[t].value, s);
@@ -565,24 +586,34 @@ fn add_connections(
                     }
                 }
                 if !found {
+                    // Space up vertical
+                    let y;
                     if x_to > x_from {
-                        ct[idx].push(Connection::Bent {
-                            x1: x_from,
-                            x2: x_to,
-                            y: spacing[idx].0 - 1,
-                            dummy: (g[c].dummy, g[t].dummy),
-                        });
+                        y = spacing[idx].0 - 1;
                         spacing[idx].0 -= 1;
                     } else {
-                        ct[idx].push(Connection::Bent {
-                            x1: x_from,
-                            x2: x_to,
-                            y: spacing[idx].1,
-                            dummy: (g[c].dummy, g[t].dummy),
-                        });
+                        y = spacing[idx].1;
                         spacing[idx].1 += 1;
+                    };
+                    // Check vertical overlap
+                    let vert_overlap_res = vertical_overlap(&ct, idx, y, x_from, x_to);
+                    if vert_overlap_res.0 {
+                        shift_right_one(&mut res, &mut ct, x_from + 1);
+                        x_from += 1;
+                        shift_right += 1;
                     }
-                    // print!("{}->{} shift, y: {} ", g[c].value, g[t].value, spacing[idx]);
+
+                    if vert_overlap_res.1 {
+                        shift_right_one(&mut res, &mut ct, x_to + 1);
+                        x_to += 1;
+                        shift_right += 1;
+                    }
+                    ct[idx].push(Connection::Bent {
+                        x1: x_from,
+                        x2: x_to,
+                        y,
+                        dummy: (res[c].dummy, res[t].dummy),
+                    });
                 }
                 // println!(
                 //     "{:?}",
@@ -597,7 +628,7 @@ fn add_connections(
     // println!("{:?}", spacing);
     // Shift things down
     for (idx, shift) in spacing.iter().enumerate() {
-        shift_down(g, perm_levels, idx + 2, (shift.1 - shift.0) as usize);
+        shift_down(&mut res, perm_levels, idx + 2, (shift.1 - shift.0) as usize);
         for r in ct[idx + 1..].iter_mut() {
             for con in r.iter_mut() {
                 if let Connection::Straight { from, .. } = con {
@@ -606,7 +637,7 @@ fn add_connections(
             }
         }
     }
-
+    *g = res;
     // g.map(
     //     |_, _| {},
     //     |i, d| {
@@ -625,7 +656,7 @@ fn add_connections(
     //     }
     // }
 
-    (ct, spacing)
+    (ct, spacing, shift_right)
 }
 
 fn init_dag(r: &HashSet<(&str, &str)>) -> Digraph {
@@ -743,7 +774,7 @@ fn replace_text(g: Digraph, a: &HashMap<&str, &str>) -> Digraph {
     res
 }
 
-fn permute(g: Digraph, levels: &Vec<usize>) -> Digraph {
+fn permute(g: Digraph, levels: &[usize]) -> Digraph {
     // let mut permutation: HashMap<usize, Vec<NodeIndex>> = HashMap::new();
     // for n in g.node_indices() {
     //     permutation
@@ -769,7 +800,7 @@ fn permute(g: Digraph, levels: &Vec<usize>) -> Digraph {
         + 1;
     let mut outer_optimal = res.clone();
     let mut outer_optimal_crossings = cal_crossings(&res, levels.len());
-    const OUTER_MAX_LOOP: usize = 3;
+    const OUTER_MAX_LOOP: usize = 23;
     let mut outer_loop_cnt = 0;
     loop {
         if outer_loop_cnt >= OUTER_MAX_LOOP {
@@ -788,7 +819,7 @@ fn permute(g: Digraph, levels: &Vec<usize>) -> Digraph {
             );
             // print_layer(&inner_optimal, levels.len());
             let mut inner_optimal_crossings = cal_crossings(&inner_optimal, levels.len());
-            const INNER_MAX_LOOP: usize = 13;
+            const INNER_MAX_LOOP: usize = 23;
             let mut inner_loop_cnt = 0;
             let mut step: isize = -1;
             let mut current_level = largest_level;
@@ -928,7 +959,7 @@ fn cal_level(g: &Digraph, i: NodeIndex) -> usize {
     }
 }
 
-fn crossings(lines: &Vec<(usize, usize)>) -> usize {
+fn crossings(lines: &[(usize, usize)]) -> usize {
     if lines.len() <= 1 {
         0
     } else {

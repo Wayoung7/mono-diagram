@@ -2,15 +2,21 @@
 name = "mono-diagram"
 version = "0.1.0"
 edition = "2021"
+authors = ["Wayoung7 <https://github.com/Wayoung7>"]
+description = "A cross-platform tool for generating plain-text diagrams from a certain syntax"
+readme = "README.md"
+repository = "https://github.com/Wayoung7/mono-diagram"
+license = "MIT"
+keywords = ["diagram", "layout", "ascii-art", "cli", "graph"]
+categories = ["command-line-utilities", "visualization", "parser-implementations"]
+exclude = ["src/mono-diagram/watch.rs"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 anyhow = "1.0.82"
 clap = "4.5.4"
 clap_derive = "4.5.4"
 clipboard = "0.5.0"
-crossterm = "0.27.0"
 pest = "2.7.9"
 pest_derive = "2.7.9"
 petgraph = "0.6.4"

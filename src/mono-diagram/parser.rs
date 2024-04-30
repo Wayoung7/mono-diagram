@@ -23,17 +23,13 @@ pub fn parse(script_path: &str) -> Result<Vec<Box<dyn Diagram>>> {
         .next()
         .unwrap();
     for diagram in main.into_inner() {
-        match diagram.as_rule() {
-            Rule::diagram => {
-                let mut diagram_inner = diagram.into_inner();
-                let title = diagram_inner.next().unwrap().into_inner().as_str();
-                let content = diagram_inner.next().unwrap().as_str();
-                let mut diagram = init_diagram(title);
-                diagram.parse_from_str(content)?;
-                parsed_diagrams.push(diagram);
-            }
-
-            _ => (),
+        if diagram.as_rule() == Rule::diagram {
+            let mut diagram_inner = diagram.into_inner();
+            let title = diagram_inner.next().unwrap().into_inner().as_str();
+            let content = diagram_inner.next().unwrap().as_str();
+            let mut diagram = init_diagram(title);
+            diagram.parse_from_str(content)?;
+            parsed_diagrams.push(diagram);
         }
     }
     Ok(parsed_diagrams)
@@ -50,10 +46,10 @@ pub fn write(diagrams: &Vec<Box<dyn Diagram>>) -> Result<Vec<u8>> {
 
 fn init_diagram(title: &str) -> Box<dyn Diagram> {
     match title {
-        "binary_tree" => Box::new(BinaryTreeDiagram::default()),
-        "table" => Box::new(TableDiagram::default()),
-        "grid" => Box::new(GridDiagram::default()),
-        "dag" => Box::new(DagGraph::default()),
+        "binary_tree" => Box::<BinaryTreeDiagram>::default(),
+        "table" => Box::<TableDiagram>::default(),
+        "grid" => Box::<GridDiagram>::default(),
+        "dag" => Box::<DagGraph>::default(),
         _ => panic!(""),
     }
 }

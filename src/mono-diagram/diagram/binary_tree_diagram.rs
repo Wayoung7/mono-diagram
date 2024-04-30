@@ -12,16 +12,9 @@ use crate::{data_structure::binary_tree::TreeNode, utils::pad_string_center};
 
 use super::Diagram;
 
+#[derive(Default)]
 pub struct BinaryTreeDiagram {
     data: Box<TreeNode<String>>,
-}
-
-impl Default for BinaryTreeDiagram {
-    fn default() -> Self {
-        Self {
-            data: Box::new(TreeNode::default()),
-        }
-    }
 }
 
 impl Diagram for BinaryTreeDiagram {
@@ -51,7 +44,7 @@ impl Diagram for BinaryTreeDiagram {
                     let node_variable_name = statement.next().unwrap().as_str();
                     let childs = parse_childs(statement.next().unwrap().into_inner());
                     relationship_map.insert(node_variable_name, childs);
-                    if root == "" {
+                    if root.is_empty() {
                         root = node_variable_name;
                     }
                     if let Some(lchild) = childs.0 {
@@ -90,7 +83,7 @@ impl Diagram for BinaryTreeDiagram {
             if i != degree - 1 {
                 // Print arrow
                 assert!(next.len() % 2 == 0);
-                for (_idx, pair) in next.chunks(2).enumerate() {
+                for pair in next.chunks(2) {
                     (0..=spacing[i + 1]).try_for_each(|_| write!(&mut buffer, " "))?;
                     if pair[0].is_some() {
                         (0..spacing[i]).try_for_each(|_| write!(&mut buffer, "_"))?;
@@ -108,7 +101,7 @@ impl Diagram for BinaryTreeDiagram {
                     (0..=spacing[i + 1]).try_for_each(|_| write!(&mut buffer, " "))?;
                     write!(&mut buffer, " ")?;
                 }
-                write!(&mut buffer, "\n")?;
+                writeln!(&mut buffer)?;
             }
 
             // Print data
@@ -125,7 +118,7 @@ impl Diagram for BinaryTreeDiagram {
                     write!(&mut buffer, "{:^width$} ", "")
                 }
             })?;
-            write!(&mut buffer, "\n")?;
+            writeln!(&mut buffer)?;
 
             let mut childs: Vec<Option<&Box<TreeNode<String>>>> = Vec::new();
             for node in next.iter() {

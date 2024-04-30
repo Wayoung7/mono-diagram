@@ -23,6 +23,43 @@ Public|Public|Protected|Private
 Protected|Protected|Protected|Private
 Private|Hidden|Hidden|Hidden
 
+[dag]
+a->b
+a->c
+b->d
+c->f
+c->g
+a->f
+d->da
+d->db
+g->gg
+b->gg
+b->f
+c->da
+z->g
+
+
+a:Home Page
+b:Main Section 1
+c:Main Section 2
+d:Subsection 1
+f:Subsection 2
+g:Subsection 3
+da:Sub-sub
+db:Sub-sub
+gg:#page#
+
+z: Another Entrance
+
+[grid] {10, 7}
+
+1,1:a
+6,2:l
+3,3:j
+10,5:m
+2,7:k
+
+
 
 
 

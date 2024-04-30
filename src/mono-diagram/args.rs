@@ -1,31 +1,18 @@
-use clap_derive::{Parser, Subcommand};
+use clap_derive::Parser;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
 pub struct Cli {
-    #[clap(subcommand)]
-    pub command: Commands,
+    /// Add a prefix to each line in the output
+    ///
+    /// This is useful when you want to paste the diagram to code comments
     #[arg(short, long, value_name = "PREFIX")]
     pub prefix: Option<String>,
-}
-
-#[derive(Debug, Subcommand)]
-pub enum Commands {
-    Build {
-        #[clap(help = "file to build")]
-        file: String,
-    },
-    Print {
-        #[clap(help = "file to print")]
-        file: String,
-    },
-    Watch {
-        #[clap(help = "file to watch")]
-        file: String,
-    },
-    Copy {
-        #[clap(help = "file to copy")]
-        file: String,
-    },
+    /// Copy the output to your computer clipboard
+    #[arg(short, long)]
+    pub copy: bool,
+    /// The path to the input file
+    #[arg()]
+    pub file_path: String,
 }
