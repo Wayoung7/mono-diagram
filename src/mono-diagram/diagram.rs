@@ -5,6 +5,7 @@ pub mod dag_diagram;
 pub mod grid_diagram;
 pub mod table_diagram;
 
+/// Abstract data type for a diagram
 pub trait Diagram {
     fn parse_from_str(&mut self, input: &str) -> Result<()>;
     fn write(&self) -> Result<Vec<u8>>;

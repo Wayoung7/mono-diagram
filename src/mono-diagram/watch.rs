@@ -1,3 +1,5 @@
+//! WIP
+
 use std::{
     fs::{metadata, Metadata},
     io::{stdout, Write},
@@ -27,7 +29,6 @@ pub fn watch(file: &str, prefix: Option<String>) -> Result<()> {
     let mut init_metadata;
     while is_running {
         execute!(stdout, Clear(terminal::ClearType::All), MoveTo(0, 0))?;
-        // stdout.flush()?;
         let result = parse(file).and_then(|d| write(&d));
         match result {
             Ok(d) => {
@@ -43,16 +44,6 @@ pub fn watch(file: &str, prefix: Option<String>) -> Result<()> {
                 println!("{}", e)
             }
         }
-
-        // queue!(
-        //     stdout,
-        //     MoveTo(0, 0),
-        //     Print(add_prefix(
-        //         String::from_utf8_lossy(&result).to_string(),
-        //         &prefix.clone().unwrap_or("".to_string())
-        //     ))
-        // )?;
-        // sleep(Duration::from_secs_f32(0.5));
 
         stdout.flush()?;
         init_metadata =

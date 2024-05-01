@@ -12,6 +12,7 @@ use crate::diagram::{
     table_diagram::TableDiagram, Diagram,
 };
 
+/// Parse all diagrams in input file
 pub fn parse(script_path: &str) -> Result<Vec<Box<dyn Diagram>>> {
     let mut parsed_diagrams: Vec<Box<dyn Diagram>> = Vec::new();
     let mut file_content = String::new();
@@ -35,6 +36,7 @@ pub fn parse(script_path: &str) -> Result<Vec<Box<dyn Diagram>>> {
     Ok(parsed_diagrams)
 }
 
+/// Write output diagram to buffer
 pub fn write(diagrams: &Vec<Box<dyn Diagram>>) -> Result<Vec<u8>> {
     let mut buffer = Vec::new();
     for d in diagrams {
@@ -44,6 +46,7 @@ pub fn write(diagrams: &Vec<Box<dyn Diagram>>) -> Result<Vec<u8>> {
     Ok(buffer)
 }
 
+/// Initialization
 fn init_diagram(title: &str) -> Box<dyn Diagram> {
     match title {
         "binary_tree" => Box::<BinaryTreeDiagram>::default(),

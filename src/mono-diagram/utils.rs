@@ -25,6 +25,7 @@ pub fn pad_string_right(s: &str, width: usize, r_pad: char) -> String {
     }
 }
 
+/// Add prefix to each line
 pub fn add_prefix(input: String, prefix: &str) -> String {
     input
         .lines()
