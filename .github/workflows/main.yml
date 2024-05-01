@@ -88,15 +88,12 @@ jobs:
   publish:
     name: Publish
     needs: [dist]
-    runs-on: fedora-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
         with:
           submodules: false
-
-      - name: Install library
-        run: sudo dnf install xcb-util\*-devel
 
       - uses: actions/download-artifact@v2
       - run: ls -al bins-*
