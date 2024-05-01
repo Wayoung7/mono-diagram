@@ -46,6 +46,7 @@ jobs:
           submodules: true
 
       - name: Install library
+        if: matrix.build == 'x86_64-linux' || matrix.build == 'aarch64-linux'
         run: sudo dnf install xcb-util\*-devel
 
       - name: Install ${{ matrix.rust }} toolchain
