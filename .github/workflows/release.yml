@@ -19,12 +19,12 @@ jobs:
         build: [x86_64-linux, aarch64-linux, x86_64-macos, x86_64-windows] 
         include:
         - build: x86_64-linux
-          os: ubuntu-20.04
+          os: fedora39
           rust: stable
           target: x86_64-unknown-linux-gnu
           cross: false
         - build: aarch64-linux
-          os: ubuntu-20.04
+          os: fedora39
           rust: stable
           target: aarch64-unknown-linux-gnu
           cross: true
@@ -46,7 +46,7 @@ jobs:
           submodules: true
 
       - name: Install library
-        run: sudo apt-get update && sudo apt-get install xorg-dev 
+        run: sudo dnf install xcb-util\*-devel
 
       - name: Install ${{ matrix.rust }} toolchain
         uses: actions-rs/toolchain@v1
@@ -101,12 +101,15 @@ jobs:
   publish:
     name: Publish
     needs: [dist]
-    runs-on: ubuntu-latest
+    runs-on: fedora-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
         with:
           submodules: false
+
+      - name: Install library
+        run: sudo dnf install xcb-util\*-devel
 
       - uses: actions/download-artifact@v2
       - run: ls -al bins-*
