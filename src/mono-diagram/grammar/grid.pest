@@ -1,7 +1,7 @@
 WHITESPACE = _{ " " | NEWLINE }
 
 int = @{ ASCII_DIGIT+ }
-cell = @{ ASCII_ALPHANUMERIC+ } 
+cell = @{ (  ASCII_ALPHANUMERIC | "." | "_" | "-" | " " | "@" | "#" | "$" | "%" | "^" | "&" | "*" | "(" | ")" | "'" | "\"" | "+" | "!" | "<" | ">" | "\\" | "/" | ";" | "=" | "?" | "," | "{" | "}" | "[" | "]" )+ }
 
 size = { "{" ~ int ~ "," ~ int ~ "}" }
 pos = { int ~ "," ~ int }
