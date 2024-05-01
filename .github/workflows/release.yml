@@ -45,6 +45,9 @@ jobs:
         with:
           submodules: true
 
+      - name: Install library
+        run: sudo apt-get update && sudo apt-get install xorg-dev && sudo apt-get install xcb-util\*-devel
+
       - name: Install ${{ matrix.rust }} toolchain
         uses: actions-rs/toolchain@v1
         with:
