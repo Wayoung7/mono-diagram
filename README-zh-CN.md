@@ -142,7 +142,7 @@ gg:#page#
 输入:
 
 ```
-[table]     \\ 每列用 '|' 分隔，每行用换行分隔
+[table]     // 每列用 '|' 分隔，每行用换行分隔
 Base Class Member|Public Inheritance|Protected Inheritance|Private Inheritance
 Public|Public|Protected|Private
 Protected|Protected|Protected|Private

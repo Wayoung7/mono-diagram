@@ -142,7 +142,7 @@ Tag: `[table]`
 Input file:
 
 ```
-[table]     \\ Each column is seperated by '|' and each row is seperated by newline
+[table]     // Each column is seperated by '|' and each row is seperated by newline
 Base Class Member|Public Inheritance|Protected Inheritance|Private Inheritance
 Public|Public|Protected|Private
 Protected|Protected|Protected|Private
