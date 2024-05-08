@@ -1,4 +1,4 @@
-[binary_tree]
+[binary_tree] { style: unicode }
 a->b,c
 b->,f
 c->k,m

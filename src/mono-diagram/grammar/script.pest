@@ -1,10 +1,15 @@
-binary_tree = { "binary_tree" }
-table = { "table" }
-grid = { "grid" }
-dag = { "dag" }
+binary_tree = { ^"binary_tree" }
+table = { ^"table" }
+grid = { ^"grid" }
+dag = { ^"dag" }
+timeline = { ^"timeline" }
+gantt = { ^"gantt" }
 
-title = { "[" ~ (binary_tree | table | grid | dag) ~ "]" }
-content = { (!(title) ~ ANY)+ }
+WHITESPACE = _{ NEWLINE | " " }
 
-diagram = { title ~ content }
-main = { SOI ~ (diagram*) ~ EOI }
+title = @{ "[" ~ " "* ~ (binary_tree | table | grid | dag | timeline | gantt) ~ " "* ~ "]" }
+attribs = @{ "{" ~ (ASCII_ALPHANUMERIC | "," | ":" | " " | "." | "-")* ~ "}" }
+content = @{ (!(title) ~ ANY)+ }
+
+diagram = { title ~ attribs? ~ content }
+main = { SOI ~ diagram* ~ EOI }

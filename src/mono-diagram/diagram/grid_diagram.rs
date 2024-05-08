@@ -5,22 +5,23 @@ use pest::Parser;
 use pest_derive::Parser;
 
 use crate::{
+    attrib::{Attrib, Style},
     data_structure::table::{Table, TableCell},
     utils::pad_string_center,
 };
 
 use super::Diagram;
 
-const PALETTE: [char; 3] = ['+', '-', '|'];
 const MAX_CELL_WIDTH: usize = 3;
 
 #[derive(Default)]
 pub struct GridDiagram {
-    pub data: Table<String>,
+    data: Table<String>,
+    attribs: Attrib,
 }
 
 impl Diagram for GridDiagram {
-    fn parse_from_str(&mut self, input: &str) -> Result<()> {
+    fn parse_from_str(&mut self, input: &str, attribs: Attrib) -> Result<()> {
         let diagram = GridDiagrmParser::parse(Rule::diagram, input)
             .map_err(|e| {
                 Error::msg(format!(
@@ -34,10 +35,11 @@ impl Diagram for GridDiagram {
         let mut assign_map: HashMap<(usize, usize), &str> = HashMap::new();
         for ele in diagram.into_inner() {
             match ele.as_rule() {
-                Rule::size => {
-                    let mut size_inner = ele.into_inner();
-                    grid_data.width = size_inner.next().unwrap().as_str().parse().unwrap();
-                    grid_data.height = size_inner.next().unwrap().as_str().parse().unwrap();
+                Rule::width => {
+                    grid_data.width = ele.into_inner().next().unwrap().as_str().parse().unwrap();
+                }
+                Rule::height => {
+                    grid_data.height = ele.into_inner().next().unwrap().as_str().parse().unwrap();
                 }
                 Rule::assign => {
                     let mut assign_inner = ele.into_inner();
@@ -61,6 +63,11 @@ impl Diagram for GridDiagram {
                 _ => (),
             }
         }
+        if grid_data.width == 0 || grid_data.height == 0 {
+            return Err(Error::msg(
+                "diagram error: please specify the width and height of the grid",
+            ));
+        }
         for j in 1..=(grid_data.height) {
             let mut row: Vec<TableCell<String>> = Vec::new();
             for i in 1..=(grid_data.width) {
@@ -77,33 +84,74 @@ impl Diagram for GridDiagram {
             grid_data.cells.push(row);
         }
         self.data = grid_data;
-
+        self.attribs = attribs;
         Ok(())
     }
 
     fn write(&self) -> Result<Vec<u8>> {
+        const PALETTE_ASCII: [char; 11] = ['+', '+', '+', '+', '-', '|', '+', '+', '+', '+', '+'];
+        const PALETTE_UNICODE: [char; 11] = ['┌', '┐', '└', '┘', '─', '│', '┬', '┴', '├', '┤', '┼'];
+        let palette = match self.attribs.style {
+            Style::Ascii => PALETTE_ASCII,
+            Style::Unicode => PALETTE_UNICODE,
+        };
+
+        let separating_line = (0..self.data.width - 1).fold(
+            repeat(palette[4]).take(MAX_CELL_WIDTH).collect::<String>(),
+            |acc, _| {
+                format!(
+                    "{}{}{}",
+                    acc,
+                    palette[10],
+                    repeat(palette[4]).take(MAX_CELL_WIDTH).collect::<String>(),
+                )
+            },
+        );
+        let first_line = (0..self.data.width - 1).fold(
+            repeat(palette[4]).take(MAX_CELL_WIDTH).collect::<String>(),
+            |acc, _| {
+                format!(
+                    "{}{}{}",
+                    acc,
+                    palette[6],
+                    repeat(palette[4]).take(MAX_CELL_WIDTH).collect::<String>(),
+                )
+            },
+        );
+        let last_line = (0..self.data.width - 1).fold(
+            repeat(palette[4]).take(MAX_CELL_WIDTH).collect::<String>(),
+            |acc, _| {
+                format!(
+                    "{}{}{}",
+                    acc,
+                    palette[7],
+                    repeat(palette[4]).take(MAX_CELL_WIDTH).collect::<String>(),
+                )
+            },
+        );
+
         let mut buffer = Vec::new();
-        let separating_line = (0..self.data.width).fold(PALETTE[0].to_string(), |acc, _| {
-            format!(
-                "{}{}{}",
-                acc,
-                repeat(PALETTE[1]).take(MAX_CELL_WIDTH).collect::<String>(),
-                PALETTE[0]
-            )
-        });
-        for row in self.data.cells.iter() {
-            let text_line: String = (0..self.data.width).fold(PALETTE[2].to_string(), |acc, i| {
+        for (idx, row) in self.data.cells.iter().enumerate() {
+            let text_line: String = (0..self.data.width).fold(palette[5].to_string(), |acc, i| {
                 format!(
                     "{}{}{}",
                     acc,
                     pad_string_center(&row[i].value, MAX_CELL_WIDTH, ' ', ' '),
-                    PALETTE[2]
+                    palette[5]
                 )
             });
-            writeln!(&mut buffer, "{}", separating_line)?;
+            if idx == 0 {
+                writeln!(&mut buffer, "{}{}{}", palette[0], first_line, palette[1])?;
+            } else {
+                writeln!(
+                    &mut buffer,
+                    "{}{}{}",
+                    palette[8], separating_line, palette[9]
+                )?;
+            }
             writeln!(&mut buffer, "{}", text_line)?;
         }
-        writeln!(&mut buffer, "{}", separating_line)?;
+        writeln!(&mut buffer, "{}{}{}", palette[2], last_line, palette[3])?;
         Ok(buffer)
     }
 }

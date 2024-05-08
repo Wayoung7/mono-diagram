@@ -14,6 +14,8 @@ use petgraph::{
 };
 use rand::{thread_rng, Rng};
 
+use crate::attrib::Attrib;
+
 use super::Diagram;
 
 const PALETTE: &str = "┌─┐││└─┘┬│─└┐┌┘V";
@@ -27,10 +29,11 @@ pub struct DagGraph {
     connections: Vec<Vec<Connection>>,
     spacing: Vec<(isize, isize)>,
     line_height: Vec<usize>,
+    attribs: Attrib,
 }
 
 impl Diagram for DagGraph {
-    fn parse_from_str(&mut self, input: &str) -> anyhow::Result<()> {
+    fn parse_from_str(&mut self, input: &str, attribs: Attrib) -> anyhow::Result<()> {
         let mut assign_map: HashMap<&str, &str> = HashMap::new();
         let mut relationship_map: HashSet<(&str, &str)> = HashSet::new();
         let diagram = DagGraphParser::parse(Rule::diagram, input)
@@ -84,6 +87,7 @@ impl Diagram for DagGraph {
             + line_height.iter().sum::<usize>();
         self.line_height = line_height;
         self.data = dag;
+        self.attribs = attribs;
         Ok(())
     }
 
@@ -935,4 +939,4 @@ enum Connection {
 
 #[derive(Parser)]
 #[grammar = "mono-diagram/grammar/dag.pest"]
-pub struct DagGraphParser;
+struct DagGraphParser;

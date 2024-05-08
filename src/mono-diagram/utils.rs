@@ -25,6 +25,15 @@ pub fn pad_string_right(s: &str, width: usize, r_pad: char) -> String {
     }
 }
 
+pub fn pad_string_left(s: &str, width: usize, l_pad: char) -> String {
+    if s.len() > width {
+        s.to_owned()
+    } else {
+        let pad_len = width - s.len();
+        format!("{}{}", repeat(l_pad).take(pad_len).collect::<String>(), s)
+    }
+}
+
 /// Add prefix to each line
 pub fn add_prefix(input: String, prefix: &str) -> String {
     input

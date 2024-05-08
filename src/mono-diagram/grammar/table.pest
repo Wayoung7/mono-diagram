@@ -1,7 +1,7 @@
 WHITESPACE = _{ NEWLINE | " " }
 
-CJK = { HAN | HIRAGANA | KATAKANA | HANGUL | BOPOMOFO }
+// CJK = { HAN | HIRAGANA | KATAKANA | HANGUL | BOPOMOFO }
 
-cell = @{ (CJK | PUNCTUATION | ASCII_ALPHANUMERIC | " ")+ }
+cell = @{ (ASCII_ALPHANUMERIC | " " | "." | "_" | "-" | "@" | "#" | "$" | "%" | "^" | "&" | "*" | "(" | ")" | "'" | "\"" | "+" | "!" | "<" | ">" | "\\" | "/" | ";" | "=" | "?" | "," | "{" | "}" | "[" | "]" | ":" | "`" | "~")+ }
 line = ${ cell ~ ("|" ~ cell)* }
 diagram = { SOI ~ line+ ~ EOI }

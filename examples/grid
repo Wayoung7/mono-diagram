@@ -1,4 +1,7 @@
-[grid] {10, 7}
+[grid] 
+
+width: 10
+height: 7
 
 1,1:a
 6,2:l

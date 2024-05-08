@@ -1,10 +1,12 @@
 WHITESPACE = _{ " " | NEWLINE }
 
 int = @{ ASCII_DIGIT+ }
-cell = @{ (  ASCII_ALPHANUMERIC | "." | "_" | "-" | " " | "@" | "#" | "$" | "%" | "^" | "&" | "*" | "(" | ")" | "'" | "\"" | "+" | "!" | "<" | ">" | "\\" | "/" | ";" | "=" | "?" | "," | "{" | "}" | "[" | "]" )+ }
+cell = @{ (  ASCII_ALPHANUMERIC | "." | "_" | "-" | " " | "@" | "#" | "$" | "%" | "^" | "&" | "*" | "(" | ")" | "'" | "\"" | "+" | "!" | "<" | ">" | "\\" | "/" | ";" | "=" | "?" | "," | "{" | "}" | "[" | "]" | "`" | "~")+ }
 
-size = { "{" ~ int ~ "," ~ int ~ "}" }
+width = { "width" ~ ":" ~ int }
+height = { "height" ~ ":" ~ int }
+
 pos = { int ~ "," ~ int }
 assign = { pos ~ ":" ~ cell }
 
-diagram = { SOI ~ size ~ assign* }
+diagram = { SOI ~ (width | height | assign)* ~ EOI }

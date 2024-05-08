@@ -44,7 +44,7 @@ Tag: `[binary_tree]`
 Input file: 
 
 ```
-[binary_tree]   // Specify diagram category
+[binary_tree] {style: ascii}  // Specify diagram category
 a->b,c          // Node 'a' has left child 'b' and right child 'c'
 b->d,f          // Node name is just like variables
 f->fa,fb
@@ -60,11 +60,13 @@ k:abc
 m:2             // Different nodes can have same value
 d:001
 fa:451
-fb:8.90
+fb:8.9
 x:1.2
 ```
 
-Output diagram:
+The key-value pair in curly brakets gives attributes to the diagram, every attribute has a default value if you didn't specify. We set `style` to `ascii`, but you can also set it to `unicode` to change the appearance of the diagram.
+
+Output diagram (ascii):
 
 ```
             ___2___
@@ -73,8 +75,22 @@ Output diagram:
     _/   \_         _/   \_
   001     -3      abc      2
           / \     /         \
-        451 8.90  e          1.2
+        451 8.9  e          1.2
 ```
+
+Output diagram (unicode):
+
+```
+               2
+       ┌───────┴───────┐
+     0.42             9.5
+   ┌───┴───┐       ┌───┴───┐
+  001     -3      abc      2
+         ┌─┴─┐   ┌─┘       └─┐
+        451 8.9  e          1.2
+```
+
+Use `binary_tree` only if the node value is very simple, because nodes on the bottom line of binary tree can only hold up to 3 characters. For node with complicated value, use `dag` instead.
 
 </details>
 
@@ -110,7 +126,7 @@ db:Sub-sub
 gg:#page#
 ```
 
-Output diagram: 
+Output diagram (dag only has unicode version): 
 
 ```
  ┌───────────────────────────────────────────────────┐
@@ -128,7 +144,7 @@ Output diagram:
 
 ```
 
-*Note: this dag graph is not stable, meaning you may get graph with different looking*
+*Note: this dag graph is not stable, meaning you may get graph with different looking each time*
 
 </details>
 
@@ -149,7 +165,7 @@ Protected|Protected|Protected|Private
 Private|Hidden|Hidden|Hidden
 ```
 
-Output diagram: 
+Output diagram (ascii): 
 
 ```
 +-------------------+--------------------+-----------------------+---------------------+
@@ -161,6 +177,20 @@ Output diagram:
 +-------------------+--------------------+-----------------------+---------------------+
 | Private           | Hidden             | Hidden                | Hidden              |
 +-------------------+--------------------+-----------------------+---------------------+
+```
+
+Output diagram (unicode): 
+
+```
+┌───────────────────┬────────────────────┬───────────────────────┬─────────────────────┐
+│ Base Class Member │ Public Inheritance │ Protected Inheritance │ Private Inheritance │
+├───────────────────┼────────────────────┼───────────────────────┼─────────────────────┤
+│ Public            │ Public             │ Protected             │ Private             │
+├───────────────────┼────────────────────┼───────────────────────┼─────────────────────┤
+│ Protected         │ Protected          │ Protected             │ Private             │
+├───────────────────┼────────────────────┼───────────────────────┼─────────────────────┤
+│ Private           │ Hidden             │ Hidden                │ Hidden              │
+└───────────────────┴────────────────────┴───────────────────────┴─────────────────────┘
 ```
 
 </details>
@@ -175,16 +205,19 @@ Tag: `[grid]`
 Input file:
 
 ```
-[grid] {10, 7}      // The grid has 10 colums and 7 rows
+[grid]
+
+width: 10       // The grid has 10 colums
+height: 7       // And 7 rows
 
 1,1:a 
-6,2:l               // The cell at column 6, row 2 has content 'l'
+6,2:l           // The cell at column 6, row 2 has content 'l'
 3,3:j
 10,5:m
 2,7:k
 ```
 
-Output diagram: 
+Output diagram(ascii): 
 
 ```
 +---+---+---+---+---+---+---+---+---+---+
@@ -204,7 +237,160 @@ Output diagram:
 +---+---+---+---+---+---+---+---+---+---+
 ```
 
+Output diagram(unicode): 
+
+```
+┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐
+│ a │   │   │   │   │   │   │   │   │   │
+├───┼───┼───┼───┼───┼───┼───┼───┼───┼───┤
+│   │   │   │   │   │ l │   │   │   │   │
+├───┼───┼───┼───┼───┼───┼───┼───┼───┼───┤
+│   │   │ j │   │   │   │   │   │   │   │
+├───┼───┼───┼───┼───┼───┼───┼───┼───┼───┤
+│   │   │   │   │   │   │   │   │   │   │
+├───┼───┼───┼───┼───┼───┼───┼───┼───┼───┤
+│   │   │   │   │   │   │   │   │   │ m │
+├───┼───┼───┼───┼───┼───┼───┼───┼───┼───┤
+│   │   │   │   │   │   │   │   │   │   │
+├───┼───┼───┼───┼───┼───┼───┼───┼───┼───┤
+│   │ k │   │   │   │   │   │   │   │   │
+└───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
+```
+
 </details>
+
+<details>
+<summary> Gantt Diagram </summary>
+
+Tag: `[gantt]`
+
+Input file:
+
+```
+[gantt] {style: unicode}
+
+timeline: Week 1|Week 2|Week 3|Week 4|Week 5    // Specify the time line
+
+task 1|   0 ~ 0.6      // Specify the time period of each task
+task 2| 0.9 ~ 2.3      // This means task 2 starts at Week 0.9 and ends at Week 2.3 (you know what I mean)
+task 3| 2.0 ~ 2.8
+task 4| 2.8 ~ 3.5
+task 5| 3.5 ~ 5.0
+```
+
+Output diagram(ascii): 
+
+```
+        |  Week 1  |  Week 2  |  Week 3  |  Week 4  |  Week 5
+--------+----------+----------+----------+----------+-----------
+ task 1 |<=====>   .          .          .          .
+ task 2 |         <===============>      .          .
+ task 3 |          .          .<=======> .          .
+ task 4 |          .          .        <=======>    .
+ task 5 |          .          .          .     <================>
+        |
+```
+
+Output diagram(unicode): 
+
+```
+           Week 1     Week 2     Week 3     Week 4     Week 5
+────────────────────────────────────────────────────────────────
+ task 1 │[━━━━━]   ·          ·          ·          ·
+ task 2 │         [━━━━━━━━━━━━━━━]      ·          ·
+ task 3 │          ·          ·[━━━━━━━] ·          ·
+ task 4 │          ·          ·        [━━━━━━━]    ·
+ task 5 │          ·          ·          ·     [━━━━━━━━━━━━━━━━]
+        │
+```
+
+</details>
+
+<details>
+<summary> Timeline </summary>
+
+Tag: `[timeline]`
+
+Input file:
+
+```
+[timeline] {style: unicode}
+
+2022.06|Some things happened in 2022        // The format is <TIME>|<EVENT>
+2023|                                       // Time can have no event
+2024.11|Some things that is happening now
+2030.01|Some things that will happen in the future
+```
+
+Output diagram(ascii): 
+
+```
+    |
+    |
+    |
+----v----
+ 2022.06  >--- Some things happened in 2022
+----v----
+    |
+ ---v---
+   2023
+ ---v---
+    |
+----v----
+ 2024.11  >--- Some things that is happening now
+----v----
+    |
+----v----
+ 2030.01  >--- Some things that will happen in the future
+----v----
+    |
+    |
+    |
+    V
+```
+
+Output diagram(unicode): 
+
+```
+    ║
+    ║
+    ║
+    ╨
+ 2022.06  ┄┄┄┄ Some things happened in 2022
+    ╥
+    ║
+    ╨
+   2023
+    ╥
+    ║
+    ╨
+ 2024.11  ┄┄┄┄ Some things that is happening now
+    ╥
+    ║
+    ╨
+ 2030.01  ┄┄┄┄ Some things that will happen in the future
+    ╥
+    ║
+    ║
+    ║
+    ▼
+```
+
+</details>
+
+### Attributes
+
+Attributes are used to give diagram styled looking.
+The format is: 
+
+```
+[<DIAGRAM TAG>] {<KEY1: VALUE1>, <KEY2: VALUE2>, ...}
+...
+```
+All attributs:
+ - `style`: `ascii` / `unicode`
+
+Currently, `Attrib` only contain `style`, but more will be added in the future.
 
 ### Command Line Arguments
 
@@ -245,7 +431,7 @@ You can find some sample input files in [`examples/`](./examples/) in the projec
 
 ## Installation
 
-Install [rust](https://www.rust-lang.org/tools/install) if you havn't.
+Please first install [rust](https://www.rust-lang.org/tools/install).
 
 Then, simply run the following commands:
 
@@ -255,15 +441,15 @@ cargo install mono-diagram
 
 ## TODO
 
-1. Node in dag can be a table. This enables you to draw class diagram (this is easy)
-2. Improve edge drawing in dag (this is hard)
-3. Add plain-text Venn diagram (this is hard)
-4. Add plain-text sequence diagram (this is easy)
+1. Node in dag can be a table. This enables you to draw class diagram 
+2. Improve edge drawing in dag 
+3. Add plain-text Venn diagram 
+4. Add plain-text sequence diagram 
 5. Make more flexible table with cells spanning multiple rows and columns
 
 ## Contribution and Help
 
-Any contribution is always welcomed, even just ideas.
+Any contribution is welcome, even just ideas.
 
 Feel free to open an issue or contact me if you find any bugs.
 

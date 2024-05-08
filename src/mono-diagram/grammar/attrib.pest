@@ -1,0 +1,6 @@
+WHITESPACE = _{ NEWLINE | " " }
+
+field = @{ ASCII_ALPHANUMERIC+ }
+value = @{ (ASCII_ALPHANUMERIC | "." | "-")+ }
+attrib = { field ~ ":" ~ value }
+attribs = { SOI ~ "{" ~ attrib ~ ("," ~ attrib)* ~ ","? ~ "}" ~ EOI }

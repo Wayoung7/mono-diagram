@@ -8,17 +8,22 @@ use anyhow::{Error, Result};
 use pest::{iterators::Pairs, Parser};
 use pest_derive::Parser;
 
-use crate::{data_structure::binary_tree::TreeNode, utils::pad_string_center};
+use crate::{
+    attrib::{Attrib, Style},
+    data_structure::binary_tree::TreeNode,
+    utils::pad_string_center,
+};
 
 use super::Diagram;
 
 #[derive(Default)]
 pub struct BinaryTreeDiagram {
     data: Box<TreeNode<String>>,
+    attribs: Attrib,
 }
 
 impl Diagram for BinaryTreeDiagram {
-    fn parse_from_str(&mut self, input: &str) -> Result<()> {
+    fn parse_from_str(&mut self, input: &str, attribs: Attrib) -> Result<()> {
         let mut root: &str = "";
         let mut relationship_map: HashMap<&str, (Option<&str>, Option<&str>)> = HashMap::new();
         let mut assign_map: HashMap<&str, &str> = HashMap::new();
@@ -64,11 +69,20 @@ impl Diagram for BinaryTreeDiagram {
 
         let tree = construct_tree(root, &relationship_map, &assign_map);
         self.data = tree;
-
+        self.attribs = attribs;
         Ok(())
     }
 
     fn write(&self) -> Result<Vec<u8>> {
+        match self.attribs.style {
+            Style::Ascii => self.write_ascii(),
+            Style::Unicode => self.write_unicode(),
+        }
+    }
+}
+
+impl BinaryTreeDiagram {
+    fn write_ascii(&self) -> Result<Vec<u8>> {
         let mut buffer = Vec::new();
         let degree = self.data.degree();
         let mut t = 0;
@@ -113,6 +127,88 @@ impl Diagram for BinaryTreeDiagram {
                         &mut buffer,
                         "{:^width$} ",
                         pad_string_center(&n.value, spacing[i], l_pad, r_pad)
+                    )
+                } else {
+                    write!(&mut buffer, "{:^width$} ", "")
+                }
+            })?;
+            writeln!(&mut buffer)?;
+
+            let mut childs: Vec<Option<&Box<TreeNode<String>>>> = Vec::new();
+            for node in next.iter() {
+                if node.is_none() {
+                    childs.push(None);
+                    childs.push(None);
+                } else {
+                    if let Some(l) = &node.unwrap().lnode {
+                        childs.push(Some(l));
+                    } else {
+                        childs.push(None);
+                    }
+                    if let Some(r) = &node.unwrap().rnode {
+                        childs.push(Some(r));
+                    } else {
+                        childs.push(None);
+                    }
+                }
+            }
+            next = childs;
+        }
+        Ok(buffer)
+    }
+
+    fn write_unicode(&self) -> Result<Vec<u8>> {
+        let mut buffer = Vec::new();
+        let degree = self.data.degree();
+        let mut t = 0;
+        let mut spacing: Vec<usize> = Vec::new();
+        for _ in 0..(degree + 3) {
+            spacing.push(t);
+            t = t * 2 + 1;
+        }
+        let mut next = vec![Some(&self.data)];
+        for i in (0..degree).rev() {
+            let width = spacing[i + 2];
+            if i != degree - 1 {
+                // Print arrow
+                assert!(next.len() % 2 == 0);
+                for pair in next.chunks(2) {
+                    (0..spacing[i + 1]).try_for_each(|_| write!(&mut buffer, " "))?;
+                    let has_left = pair[0].is_some();
+                    let has_right = pair[1].is_some();
+                    if has_left {
+                        write!(&mut buffer, "┌")?;
+                        (0..spacing[i + 1]).try_for_each(|_| write!(&mut buffer, "─"))?;
+                    } else {
+                        (0..=spacing[i + 1]).try_for_each(|_| write!(&mut buffer, " "))?;
+                    }
+                    if has_left && has_right {
+                        write!(&mut buffer, "┴")?;
+                    } else if has_left {
+                        write!(&mut buffer, "┘")?;
+                    } else if has_right {
+                        write!(&mut buffer, "└")?;
+                    } else {
+                        write!(&mut buffer, " ")?;
+                    }
+                    if has_right {
+                        (0..spacing[i + 1]).try_for_each(|_| write!(&mut buffer, "─"))?;
+                        write!(&mut buffer, "┐")?;
+                    } else {
+                        (0..=spacing[i + 1]).try_for_each(|_| write!(&mut buffer, " "))?;
+                    }
+                    (0..=spacing[i + 1]).try_for_each(|_| write!(&mut buffer, " "))?;
+                }
+                writeln!(&mut buffer)?;
+            }
+
+            // Print data
+            next.iter().try_for_each(|n| {
+                if let Some(n) = n {
+                    write!(
+                        &mut buffer,
+                        "{:^width$} ",
+                        pad_string_center(&n.value, spacing[i], ' ', ' ')
                     )
                 } else {
                     write!(&mut buffer, "{:^width$} ", "")

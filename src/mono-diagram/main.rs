@@ -1,4 +1,5 @@
 mod args;
+mod attrib;
 mod data_structure;
 mod diagram;
 mod parser;

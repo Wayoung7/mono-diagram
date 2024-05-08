@@ -5,21 +5,21 @@ use pest::Parser;
 use pest_derive::Parser;
 
 use crate::{
+    attrib::{Attrib, Style},
     data_structure::table::{Table, TableCell},
     utils::pad_string_right,
 };
 
 use super::Diagram;
 
-const PALETTE: [char; 3] = ['+', '-', '|'];
-
 #[derive(Default)]
 pub struct TableDiagram {
-    pub data: Table<String>,
+    data: Table<String>,
+    attribs: Attrib,
 }
 
 impl Diagram for TableDiagram {
-    fn parse_from_str(&mut self, input: &str) -> Result<()> {
+    fn parse_from_str(&mut self, input: &str, attribs: Attrib) -> Result<()> {
         let mut table_data = Table::<String>::default();
         let diagram = TableDiagramParser::parse(Rule::diagram, input)
             .map_err(|e| {
@@ -53,12 +53,18 @@ impl Diagram for TableDiagram {
 
         table_data.width = width;
         self.data = table_data;
-
+        self.attribs = attribs;
         Ok(())
     }
 
     fn write(&self) -> Result<Vec<u8>> {
-        let mut buffer = Vec::new();
+        const PALETTE_ASCII: [char; 11] = ['+', '+', '+', '+', '-', '|', '+', '+', '+', '+', '+'];
+        const PALETTE_UNICODE: [char; 11] = ['┌', '┐', '└', '┘', '─', '│', '┬', '┴', '├', '┤', '┼'];
+        let palette = match self.attribs.style {
+            Style::Ascii => PALETTE_ASCII,
+            Style::Unicode => PALETTE_UNICODE,
+        };
+
         let mut col_width: Vec<usize> = repeat(0).take(self.data.width).collect();
         for row in self.data.cells.iter() {
             for (idx, col) in row.iter().enumerate() {
@@ -68,20 +74,45 @@ impl Diagram for TableDiagram {
                 }
             }
         }
-        let separating_line: String = col_width.iter().fold(PALETTE[0].to_string(), |acc, &w| {
+        let mut separating_line: String =
+            col_width.iter().fold(palette[8].to_string(), |acc, &w| {
+                format!(
+                    "{}{}{}",
+                    acc,
+                    repeat(palette[4]).take(w + 2).collect::<String>(),
+                    palette[10]
+                )
+            });
+        separating_line.pop();
+        separating_line.push(palette[9]);
+        let mut first_line: String = col_width.iter().fold(palette[0].to_string(), |acc, &w| {
             format!(
                 "{}{}{}",
                 acc,
-                repeat(PALETTE[1]).take(w + 2).collect::<String>(),
-                PALETTE[0]
+                repeat(palette[4]).take(w + 2).collect::<String>(),
+                palette[6]
             )
         });
-        for row in self.data.cells.iter() {
+        first_line.pop();
+        first_line.push(palette[1]);
+        let mut last_line: String = col_width.iter().fold(palette[2].to_string(), |acc, &w| {
+            format!(
+                "{}{}{}",
+                acc,
+                repeat(palette[4]).take(w + 2).collect::<String>(),
+                palette[7]
+            )
+        });
+        last_line.pop();
+        last_line.push(palette[3]);
+
+        let mut buffer = Vec::new();
+        for (idx, row) in self.data.cells.iter().enumerate() {
             let text_line: String =
                 col_width
                     .iter()
                     .enumerate()
-                    .fold(PALETTE[2].to_string(), |acc, (idx, &w)| {
+                    .fold(palette[5].to_string(), |acc, (idx, &w)| {
                         let text_with_space = if idx < row.len() {
                             " ".to_string() + &row[idx].value
                         } else {
@@ -91,13 +122,17 @@ impl Diagram for TableDiagram {
                             "{}{}{}",
                             acc,
                             pad_string_right(&text_with_space, w + 2, ' ',),
-                            PALETTE[2]
+                            palette[5]
                         )
                     });
-            writeln!(&mut buffer, "{}", separating_line)?;
+            if idx == 0 {
+                writeln!(&mut buffer, "{}", first_line)?;
+            } else {
+                writeln!(&mut buffer, "{}", separating_line)?;
+            }
             writeln!(&mut buffer, "{}", text_line)?;
         }
-        writeln!(&mut buffer, "{}", separating_line)?;
+        writeln!(&mut buffer, "{}", last_line)?;
         Ok(buffer)
     }
 }

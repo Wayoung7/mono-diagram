@@ -1,0 +1,10 @@
+WHITESPACE = _{ NEWLINE | " " }
+
+time = @{ (ASCII_ALPHANUMERIC | "." | "_" | "-" | " " | "@" | "#" | "$" | "%" | "^" | "&" | "*" | "(" | ")" | "'" | "\"" | "+" | "!" | "<" | ">" | "\\" | "/" | ";" | "=" | "?" | "," | "{" | "}" | "[" | "]" | "`")* }
+timeline = ${ ("timeline : " | "timeline: " | "timeline :" | "timeline:") ~ time ~ ("|" ~ time)* }
+
+task = @{ (ASCII_ALPHANUMERIC | "." | "_" | "-" | " " | "@" | "#" | "$" | "%" | "^" | "&" | "*" | "(" | ")" | "'" | "\"" | "+" | "!" | "<" | ">" | "\\" | "/" | ";" | "=" | "?" | "," | "{" | "}" | "[" | "]" | "`")* }
+number = @{ NUMBER+ ~ ("." ~ NUMBER*)? }
+period = { task ~ "|" ~ number ~ "~" ~ number }
+
+diagram = { SOI ~ (timeline | period)+ ~ EOI }
